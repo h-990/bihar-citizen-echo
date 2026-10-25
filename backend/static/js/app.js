@@ -42,6 +42,7 @@ document.addEventListener("DOMContentLoaded", () => {
   // Filter Selects
   const districtFilterSelect = document.getElementById("districtFilterSelect");
   const grievanceFilterSelect = document.getElementById("grievanceFilterSelect");
+  const departmentFilterSelect = document.getElementById("departmentFilterSelect");
 
   let ws = null;
   let rawItems = [];
@@ -428,6 +429,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const filterDistrict = districtFilterSelect.value;
     const filterGrievance = grievanceFilterSelect.value;
+    const filterDept = departmentFilterSelect ? departmentFilterSelect.value : "ALL";
 
     const filtered = processedItems.filter(item => {
       const itemDistrict = (item.district || item.district_hint || "").toLowerCase();
@@ -439,6 +441,15 @@ document.addEventListener("DOMContentLoaded", () => {
       }
       if (filterGrievance === "NON_POLITICAL" && item.is_political) {
         return false;
+      }
+      if (filterDept !== "ALL") {
+        const auth = (item.responsible_authority || "").toUpperCase();
+        const desc = ((item.title || "") + " " + (item.actual_news || "")).toUpperCase();
+        if (filterDept === "PMC" && !auth.includes("MUNICIPAL") && !auth.includes("निगम") && !auth.includes("PMC") && !desc.includes("निगम")) return false;
+        if (filterDept === "BSPHCL" && !auth.includes("POWER") && !auth.includes("ELECTRIC") && !auth.includes("बिजली") && !auth.includes("BSPHCL") && !desc.includes("बिजली")) return false;
+        if (filterDept === "RCD" && !auth.includes("ROAD") && !auth.includes("RCD") && !auth.includes("सड़क") && !desc.includes("सड़क")) return false;
+        if (filterDept === "PHED" && !auth.includes("WATER") && !auth.includes("PHED") && !auth.includes("नल-जल") && !desc.includes("नल-जल")) return false;
+        if (filterDept === "HEALTH" && !auth.includes("HEALTH") && !auth.includes("HOSPITAL") && !auth.includes("अस्पताल") && !desc.includes("अस्पताल")) return false;
       }
       return true;
     });
@@ -637,6 +648,12 @@ document.addEventListener("DOMContentLoaded", () => {
   grievanceFilterSelect.addEventListener("change", () => {
     renderProcessedFeed();
   });
+
+  if (departmentFilterSelect) {
+    departmentFilterSelect.addEventListener("change", () => {
+      renderProcessedFeed();
+    });
+  }
 
   // ================= 6. FIXED COLLAPSIBLE RIGHT PANEL: MASTER PROCESSED OUTPUT =================
   const masterOutputPanel = document.getElementById("masterOutputPanel");
