@@ -88,17 +88,30 @@
       </div>
       <div class="portal-list">
         <div class="portal-item">
-          <span class="portal-name">🗞️ Dainik Bhaskar Bihar</span>
-          <span class="portal-badge" id="badgeBhaskar">Ready</span>
+          <label class="portal-name">
+            <input type="checkbox" id="chkBhaskar" checked style="accent-color: #0284c7; margin-right: 6px;">
+            🗞️ Dainik Bhaskar Bihar
+          </label>
+          <span class="portal-badge" id="badgeBhaskar">Active</span>
         </div>
         <div class="portal-item">
-          <span class="portal-name">📰 Live Hindustan Bihar</span>
-          <span class="portal-badge" id="badgeHindustan">Ready</span>
+          <label class="portal-name">
+            <input type="checkbox" id="chkHindustan" checked style="accent-color: #0284c7; margin-right: 6px;">
+            📰 Live Hindustan Bihar
+          </label>
+          <span class="portal-badge" id="badgeHindustan">Active</span>
         </div>
         <div class="portal-item">
-          <span class="portal-name">📑 Prabhat Khabar Bihar</span>
-          <span class="portal-badge" id="badgePrabhat">Ready</span>
+          <label class="portal-name">
+            <input type="checkbox" id="chkPrabhat" checked style="accent-color: #0284c7; margin-right: 6px;">
+            📑 Prabhat Khabar Bihar
+          </label>
+          <span class="portal-badge" id="badgePrabhat">Active</span>
         </div>
+      </div>
+      <div style="display: flex; gap: 8px; margin-top: 10px;">
+        <button id="exportCsvBtn" class="btn btn-secondary btn-sm" style="flex: 1;">📥 Export CSV</button>
+        <button id="exportJsonBtn" class="btn btn-secondary btn-sm" style="flex: 1;">💾 Export JSON</button>
       </div>
     </div>
 

@@ -167,21 +167,28 @@
     const content = paragraphs.slice(0, 10).join("\n\n");
     const snippet = paragraphs.slice(0, 2).join(" ").substring(0, 320);
 
-    let mediaUrl = "";
-    const ogImg = document.querySelector('meta[property="og:image"]');
-    if (ogImg && ogImg.content && !ogImg.content.includes("logo") && !ogImg.content.includes("default")) {
-      mediaUrl = ogImg.content;
-    }
-    if (!mediaUrl) {
-      const artImg = document.querySelector("article img, main img, figure img, .story-media img");
-      if (artImg) mediaUrl = artImg.currentSrc || artImg.src || artImg.getAttribute("data-src") || "";
-    }
-    if (!mediaUrl || mediaUrl.includes("logo") || mediaUrl.includes("grey")) {
-      mediaUrl = "https://images.unsplash.com/photo-1590283603385-17ffb3a7f29f?auto=format&fit=crop&w=800&q=80";
-    }
-
     const district = detectDistrict(title + " " + content);
     const grievanceInfo = evaluateGrievance(title + " " + content);
+
+    let mediaUrl = "";
+    const metaImg = document.querySelector('meta[property="og:image"], meta[name="twitter:image"], meta[itemprop="image"]');
+    if (metaImg && metaImg.content && !metaImg.content.includes("logo") && !metaImg.content.includes("default") && !metaImg.content.includes("favicon")) {
+      mediaUrl = metaImg.content;
+    }
+    if (!mediaUrl) {
+      const artImg = document.querySelector("article img, main img, figure img, .story-media img, .detail-img img");
+      if (artImg) mediaUrl = artImg.currentSrc || artImg.src || artImg.getAttribute("data-src") || artImg.getAttribute("data-original") || "";
+    }
+    if (!mediaUrl || mediaUrl.includes("logo") || mediaUrl.includes("grey") || mediaUrl.startsWith("data:")) {
+      const fallbackThemes = {
+        "Roads, Bridges & Waterlogging": "https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?auto=format&fit=crop&w=800&q=80",
+        "Electricity & Power Outages": "https://images.unsplash.com/photo-1473341304170-971dccb5ac1e?auto=format&fit=crop&w=800&q=80",
+        "Drinking Water & Water Supply": "https://images.unsplash.com/photo-1541888946425-d0fbb18086f6?auto=format&fit=crop&w=800&q=80",
+        "Hospitals & Public Healthcare": "https://images.unsplash.com/photo-1519494026892-80bbd2d6fd0d?auto=format&fit=crop&w=800&q=80",
+        "Sanitation & Municipal Neglect": "https://images.unsplash.com/photo-1532996122724-e3c354a0b15b?auto=format&fit=crop&w=800&q=80"
+      };
+      mediaUrl = fallbackThemes[grievanceInfo.category] || "https://images.unsplash.com/photo-1590283603385-17ffb3a7f29f?auto=format&fit=crop&w=800&q=80";
+    }
     const ts = Date.now();
 
     const articlePayload = {
