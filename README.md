@@ -188,12 +188,46 @@ Need to ask DeepSeek an immediate civic or analytical question without disruptin
 | Method | Endpoint | Description |
 | :--- | :--- | :--- |
 | `GET` | `/api/status` | Returns pipeline running state and extension statuses. |
+| `GET` | `/api/health` | Liveness health probe for orchestrator services. |
+| `GET` | `/api/metrics` | System telemetry metrics (ingestion rates, ratios, worker counts). |
+| `GET` | `/api/analytics/district_hotspots` | Aggregated grievance density ranking across Bihar districts. |
 | `POST` | `/api/pipeline/toggle` | Starts or pauses the global pipeline. |
 | `GET` | `/api/raw_news` | Retrieves queued raw news items. |
 | `GET` | `/api/processed_news` | Retrieves classified civic grievance intelligence records. |
 | `POST` | `/api/custom_prompt` | Priority Intercept query dispatcher to DeepSeek. |
 | `POST` | `/api/db/reset` | Resets the SQLite database tables and queues. |
 | `WS` | `/ws/hub` | Real-time bi-directional WebSocket hub for extensions and frontend. |
+
+---
+
+## 🧪 Automated Testing & Continuous Integration
+
+The platform includes an automated testing suite run on GitHub Actions for Python 3.10, 3.11, and 3.12:
+
+```bash
+# Run unit test suite
+python -m unittest discover tests -v
+
+# Validate JavaScript syntax across extensions and frontend
+node -c backend/static/js/app.js
+node -c backend/static/js/modal.js
+node -c extensions/bihar_news_scraper/background.js
+node -c extensions/civic_severity_scorer/background.js
+node -c extensions/deepseek_automator/content_script.js
+```
+
+---
+
+## 👥 Engineering Team & Contributors
+
+Developed as an iterative, cross-functional civic intelligence platform:
+
+- **Harsh** ([@h-990](https://github.com/h-990)) — *Lead Platform Architect*
+  - FastAPI WebSocket Hub, async pipeline DAG engine, DeepSeek automator retry policies, CI/CD pipelines, and high-res UI design.
+- **iamdd07** ([@iamdd07](https://github.com/iamdd07)) — *Scraping Ingestion & Extension Suite*
+  - Multi-portal concurrent crawler (Dainik Bhaskar, Live Hindustan, Prabhat Khabar), JSON/CSV dataset export, dynamic action badge telemetry, and regex sanitizers.
+- **Namrata Mishra** ([@namratamishra8429-oss](https://github.com/namratamishra8429-oss)) — *Geo-Analytics & Civic Severity Engine*
+  - Multi-factor hazard calculation model, district population density weighting, District Magistrate briefing note generator, and 60fps radar sweep optimizations.
 
 ---
 
