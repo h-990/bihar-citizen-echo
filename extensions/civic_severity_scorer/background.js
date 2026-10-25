@@ -129,18 +129,28 @@ async function handleBackendMessage(msg) {
 }
 
 /**
- * Deterministic Bihar Civic Severity & Hazard Scoring Engine
+ * Weighted Multi-Factor Bihar Civic Severity & Hazard Scoring Model
+ * Calculates composite risk index: R = min(99, max(10, (Base_Hazard * Density_Multiplier) + Urgency_Bias + Vulnerability_Delta))
  */
 function evaluateCivicSeverity(item) {
   const text = `${item.title || ""} ${item.snippet || ""} ${item.content || ""} ${item.grievance_type || ""}`.toLowerCase();
+  const district = (item.district || item.district_hint || "").toLowerCase();
   
-  let score = 25; // baseline
+  let baseScore = 20;
   let hazardCategory = "ROUTINE_ADMIN";
   const recommendations = [];
+  const factors = {
+    structuralRisk: 0,
+    healthRisk: 0,
+    electricalRisk: 0,
+    sanitationRisk: 0,
+    densityMultiplier: 1.0
+  };
 
-  // 1. Catastrophic / High Danger Infrastructure & Life Risk (+45 to +55)
+  // 1. Catastrophic / High Danger Infrastructure & Life Risk (+55)
   if (text.includes("मौत") || text.includes("dead") || text.includes("death") || text.includes("हादसा") || text.includes("collapsed") || text.includes("गिर गया") || text.includes("पुल धंस")) {
-    score += 55;
+    baseScore += 50;
+    factors.structuralRisk = 50;
     hazardCategory = "INFRASTRUCTURE_HAZARD";
     recommendations.push("Dispatch SDRF & structural inspection team immediately");
     recommendations.push("Cordon off damaged bridge/structure perimeter");
@@ -148,7 +158,8 @@ function evaluateCivicSeverity(item) {
 
   // 2. Severe Waterlogging / Flood / Sump Pump Failure (+35)
   if (text.includes("जलजमाव") || text.includes("waterlogging") || text.includes("बाढ़") || text.includes("डूब") || text.includes("सीवर") || text.includes("संप हाउस")) {
-    score += 35;
+    baseScore += 30;
+    factors.sanitationRisk = 30;
     if (hazardCategory === "ROUTINE_ADMIN") hazardCategory = "INFRASTRUCTURE_HAZARD";
     recommendations.push("Deploy mobile dewatering pumps to affected wards");
     recommendations.push("Issue dengue larvicide anti-fogging drive");
@@ -156,7 +167,8 @@ function evaluateCivicSeverity(item) {
 
   // 3. Hospital / Health Outbreak / Oxygen / Ambulance (+40)
   if (text.includes("अस्पताल") || text.includes("hospital") || text.includes("दवा") || text.includes("दवाइयां") || text.includes("डॉक्टर") || text.includes("डेंगू") || text.includes("ऑक्सीजन") || text.includes("सदर")) {
-    score += 40;
+    baseScore += 35;
+    factors.healthRisk = 35;
     hazardCategory = "PUBLIC_HEALTH_RISK";
     recommendations.push("Notify District Civil Surgeon & CMO Patna");
     recommendations.push("Replenish emergency medicine inventory and ICU staff");
@@ -164,27 +176,41 @@ function evaluateCivicSeverity(item) {
 
   // 4. Power Grid / High Voltage Wire / Transformer Blasts (+30)
   if (text.includes("करंट") || text.includes("बिजली") || text.includes("ट्रांसफार्मर") || text.includes("11kv") || text.includes("आग") || text.includes("power cut") || text.includes("blackout")) {
-    score += 30;
+    baseScore += 25;
+    factors.electricalRisk = 25;
     if (hazardCategory === "ROUTINE_ADMIN") hazardCategory = "ELECTRICAL_FIRE_DANGER";
     recommendations.push("Request BSPHCL to isolate faulty 11kV feeder lines");
     recommendations.push("Deploy mobile emergency transformer replacement unit");
   }
 
-  // 5. Road Cave-In / Deep Potholes / Traffic Standstill (+25)
+  // 5. Road Cave-In / Deep Potholes / Traffic Standstill (+20)
   if (text.includes("सड़क") || text.includes("road") || text.includes("गड्ढे") || text.includes("जाम") || text.includes("nh-") || text.includes("sh-")) {
-    score += 25;
+    baseScore += 20;
     if (hazardCategory === "ROUTINE_ADMIN") hazardCategory = "MUNICIPAL_DISRUPTION";
     recommendations.push("Dispatch Road Construction Dept (RCD) cold mix patching squad");
   }
 
-  // Cap score between 5 and 99
-  score = Math.min(99, Math.max(10, score));
+  // 6. District Population Density Multiplier (Bihar tier weights)
+  if (district.includes("patna") || district.includes("पटना")) {
+    factors.densityMultiplier = 1.30; // Metro capital zone
+  } else if (district.includes("muzaffarpur") || district.includes("gaya") || district.includes("bhagalpur")) {
+    factors.densityMultiplier = 1.18; // Major municipal corporations
+  } else if (district.includes("darbhanga") || district.includes("purnia") || district.includes("begusarai")) {
+    factors.densityMultiplier = 1.12;
+  }
+
+  // Urgency level bias from AI extractor
+  const urgencyBias = typeof item.urgency_level === "number" ? (item.urgency_level - 3) * 6 : 0;
+
+  // Composite calculation
+  let finalScore = Math.round((baseScore * factors.densityMultiplier) + urgencyBias);
+  finalScore = Math.min(99, Math.max(12, finalScore));
 
   // Determine Response Priority
   let responsePriority = "LOW_ROUTINE";
-  if (score >= 80) responsePriority = "CRITICAL_DISASTER";
-  else if (score >= 60) responsePriority = "HIGH_ALERT";
-  else if (score >= 35) responsePriority = "STANDARD_RESPONSE";
+  if (finalScore >= 80) responsePriority = "CRITICAL_DISASTER";
+  else if (finalScore >= 60) responsePriority = "HIGH_ALERT";
+  else if (finalScore >= 35) responsePriority = "STANDARD_RESPONSE";
 
   if (recommendations.length === 0) {
     recommendations.push("Route to relevant Ward Councillor for routine inspection");
@@ -192,9 +218,10 @@ function evaluateCivicSeverity(item) {
   }
 
   return {
-    hazard_score: score,
+    hazard_score: finalScore,
     hazard_category: hazardCategory,
     response_priority: responsePriority,
+    factors: factors,
     actionable_recommendations: recommendations,
     evaluated_at: Date.now() / 1000
   };
