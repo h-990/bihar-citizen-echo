@@ -20,7 +20,7 @@ from fastapi.staticfiles import StaticFiles
 from backend.database import (
     init_db, get_all_raw_news, get_all_processed_news, get_news_detail,
     get_recent_logs, reset_all_databases, insert_raw_news, insert_processed_news,
-    get_all_nodes, save_node_config
+    get_all_nodes, save_node_config, get_district_hotspot_summary
 )
 from backend.hub import hub
 from backend.pipeline import PipelineOrchestrator
@@ -528,6 +528,12 @@ async def fetch_system_logs(limit: int = 100, stream: Optional[str] = None):
     """Retrieve recent logs for terminal dock."""
     logs = await get_recent_logs(limit=limit, stream=stream)
     return {"count": len(logs), "logs": logs}
+
+@app.get("/api/analytics/district_hotspots")
+async def fetch_district_hotspots():
+    """Retrieve aggregated grievance hotspot density across Bihar districts."""
+    hotspots = await get_district_hotspot_summary()
+    return {"status": "success", "total_districts": len(hotspots), "hotspots": hotspots}
 
 @app.get("/api/nodes")
 async def fetch_pipeline_nodes():

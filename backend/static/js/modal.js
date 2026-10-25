@@ -388,9 +388,62 @@ window.NewsModal = (function () {
     }
   }
 
+  function generateDistrictBrief(districtName, items = []) {
+    const distGrievances = items.filter(it => {
+      const d = (it.district || it.district_hint || "").toLowerCase();
+      return d.includes(districtName.toLowerCase());
+    });
+    
+    const critical = distGrievances.filter(it => (it.urgency_level || it.urgency_hint || 0) >= 4);
+    const dateStr = new Date().toLocaleDateString("en-IN", { day: 'numeric', month: 'short', year: 'numeric' });
+    
+    const briefHtml = `
+      <div style="font-family: inherit; color: #f8fafc;">
+        <div style="border-bottom: 2px solid #0284c7; padding-bottom: 12px; margin-bottom: 16px;">
+          <h2 style="margin: 0; color: #38bdf8; font-size: 18px;">🏛️ District Magistrate Civic Intelligence Brief: ${escapeHtml(districtName)}</h2>
+          <div style="font-size: 12px; color: #94a3b8; margin-top: 4px;">Compiled on ${dateStr} | Bihar Citizen Echo Automated Sentinel</div>
+        </div>
+        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 18px;">
+          <div style="background: rgba(15,23,42,0.8); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; padding: 12px; text-align: center;">
+            <div style="font-size: 22px; font-weight: 700; color: #38bdf8;">${distGrievances.length}</div>
+            <div style="font-size: 11px; color: #94a3b8; text-transform: uppercase;">Total Incidents</div>
+          </div>
+          <div style="background: rgba(15,23,42,0.8); border: 1px solid rgba(239,68,68,0.3); border-radius: 8px; padding: 12px; text-align: center;">
+            <div style="font-size: 22px; font-weight: 700; color: #ef4444;">${critical.length}</div>
+            <div style="font-size: 11px; color: #fca5a5; text-transform: uppercase;">Critical Hazards</div>
+          </div>
+          <div style="background: rgba(15,23,42,0.8); border: 1px solid rgba(52,211,153,0.3); border-radius: 8px; padding: 12px; text-align: center;">
+            <div style="font-size: 22px; font-weight: 700; color: #34d399;">${Math.round((distGrievances.length - critical.length) / Math.max(1, distGrievances.length) * 100)}%</div>
+            <div style="font-size: 11px; color: #6ee7b7; text-transform: uppercase;">Standard Routine</div>
+          </div>
+        </div>
+        <h4 style="margin: 12px 0 8px 0; color: #e2e8f0; font-size: 13px;">🚨 Priority Action Items Requiring Administrative Intervention:</h4>
+        <ul style="list-style-type: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 8px;">
+          ${distGrievances.slice(0, 5).map((g, idx) => `
+            <li style="background: rgba(30,41,59,0.7); border-left: 3px solid ${(g.urgency_level || g.urgency_hint || 0) >= 4 ? '#ef4444' : '#38bdf8'}; border-radius: 4px; padding: 8px 12px;">
+              <div style="font-weight: 600; font-size: 12px; color: #f1f5f9;">${idx + 1}. ${escapeHtml(g.title || 'Civic Grievance')}</div>
+              <div style="font-size: 11px; color: #94a3b8; margin-top: 4px;">Responsible Authority: <span style="color: #cbd5e1; font-weight: 500;">${escapeHtml(g.responsible_authority || 'Local Administration / Ward')}</span></div>
+            </li>
+          `).join('')}
+        </ul>
+        <div style="margin-top: 20px; display: flex; justify-content: flex-end; gap: 8px;">
+          <button onclick="window.print()" class="btn btn-secondary btn-sm">🖨️ Print Brief</button>
+        </div>
+      </div>
+    `;
+
+    const detailModal = document.getElementById("detailModal");
+    const modalBody = document.getElementById("modalBody");
+    if (detailModal && modalBody) {
+      modalBody.innerHTML = briefHtml;
+      detailModal.classList.add("open");
+    }
+  }
+
   return {
     init,
     openModalWithItem,
-    openDrawer
+    openDrawer,
+    generateDistrictBrief
   };
 })();
