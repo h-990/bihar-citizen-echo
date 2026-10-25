@@ -282,14 +282,32 @@ window.AppTerminal = (function () {
     const nodes = document.querySelectorAll(".district-node");
     if (!tooltip || !nodes.length) return;
 
+    // Memoize district metadata to prevent DOM layout thrashing during radar sweeps
+    const nodeCache = new WeakMap();
+
     nodes.forEach(node => {
+      const distAttr = node.getAttribute("data-dist") || node.querySelector(".node-label")?.textContent || "DISTRICT";
+      const cleanDist = distAttr.split(" (")[0].trim();
+      nodeCache.set(node, { distName: cleanDist, rawAttr: distAttr });
+
+      node.style.cursor = "pointer";
+
       node.addEventListener("mouseenter", () => {
-        const distName = node.getAttribute("data-dist") || node.querySelector(".node-label")?.textContent || "DISTRICT";
-        tooltip.innerHTML = `<span class="tt-dist">📍 ${distName}</span> <span class="tt-stat">ACTIVE // RADAR LOCK</span>`;
+        const cached = nodeCache.get(node);
+        tooltip.innerHTML = `<span class="tt-dist">📍 ${cached.distName}</span> <span class="tt-stat">ACTIVE // RADAR LOCK [Click for Brief]</span>`;
         tooltip.style.opacity = "1";
       });
+
       node.addEventListener("mouseleave", () => {
         tooltip.style.opacity = "0";
+      });
+
+      node.addEventListener("click", () => {
+        const cached = nodeCache.get(node);
+        if (window.ModalManager && typeof window.ModalManager.generateDistrictBrief === "function") {
+          const items = window._cachedProcessedNews || [];
+          window.ModalManager.generateDistrictBrief(cached.distName, items);
+        }
       });
     });
   }

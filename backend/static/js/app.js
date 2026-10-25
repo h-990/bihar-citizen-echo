@@ -413,6 +413,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   function renderProcessedFeed() {
     if (!processedFeedStreamList) return;
+    window._cachedProcessedNews = processedItems;
     if (processedCountPill) processedCountPill.innerText = `${processedItems.length} analyzed`;
     processedFeedStreamList.innerHTML = "";
 
