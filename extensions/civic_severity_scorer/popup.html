@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Civic Priority & Severity Analyzer</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="popup-container">
+    <!-- Header -->
+    <header class="header">
+      <div class="brand">
+        <span class="icon">🚨</span>
+        <div>
+          <h2>Bihar Civic Severity Analyzer</h2>
+          <span class="subtitle">Hazard Scoring & Response Prioritization</span>
+        </div>
+      </div>
+      <div class="status-indicator">
+        <span class="status-dot" id="wsStatus"></span>
+        <span class="status-text" id="wsStatusText">Connecting...</span>
+      </div>
+    </header>
+
+    <!-- Metrics Bar -->
+    <div class="metrics-grid">
+      <div class="metric-card">
+        <span class="metric-label">Evaluated</span>
+        <span class="metric-value" id="totalScoredCount">0</span>
+      </div>
+      <div class="metric-card">
+        <span class="metric-label">Engine Node</span>
+        <span class="metric-value text-accent">Active</span>
+      </div>
+      <div class="metric-card">
+        <span class="metric-label">Threshold</span>
+        <span class="metric-value text-warning" id="thresholdValue">50</span>
+      </div>
+    </div>
+
+    <!-- Controls -->
+    <section class="controls-card">
+      <div class="control-row">
+        <label for="thresholdSlider">Sensitivity Threshold:</label>
+        <input type="range" id="thresholdSlider" min="10" max="90" value="50">
+      </div>
+      <div class="control-row" style="margin-top: 8px;">
+        <label for="autoHealthToggle" style="font-size: 11px;">Auto-Escalate Public Health Risks</label>
+        <input type="checkbox" id="autoHealthToggle" checked>
+      </div>
+    </section>
+
+    <!-- Standalone Test Box -->
+    <section class="test-card">
+      <div class="test-header">
+        <span>Instant Bihar Hazard Tester</span>
+        <button id="runSampleScoreBtn" class="btn btn-primary btn-sm">⚡ Score Sample</button>
+      </div>
+      <div id="testOutputBox" class="test-output hidden">
+        <div class="score-banner">
+          <div class="score-circle" id="scoreCircle">88</div>
+          <div class="score-details">
+            <span class="badge" id="priorityBadge">CRITICAL_DISASTER</span>
+            <span class="category-text" id="categoryText">INFRASTRUCTURE_HAZARD</span>
+          </div>
+        </div>
+        <div class="recs-box">
+          <strong>Recommended Mitigation:</strong>
+          <ul id="recommendationsList"></ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- Console Logs -->
+    <section class="logs-card">
+      <div class="logs-header">
+        <span>Live Analysis Events</span>
+        <button id="clearLogsBtn" class="btn-link">Clear</button>
+      </div>
+      <div class="logs-console" id="logsConsole">
+        <div class="log-line info">Connecting to backend hub...</div>
+      </div>
+    </section>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

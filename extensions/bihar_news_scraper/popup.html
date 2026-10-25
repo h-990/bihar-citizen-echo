@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Bihar News Multi-Tab Grievance Crawler</title>
+  <link rel="stylesheet" href="popup.css">
+  <style>
+    .portal-list {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      margin-top: 8px;
+    }
+    .portal-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: #0f172a;
+      padding: 8px 12px;
+      border-radius: 8px;
+      border: 1px solid #1e293b;
+      font-size: 11px;
+    }
+    .portal-name {
+      font-weight: 600;
+      color: #e2e8f0;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .portal-badge {
+      font-size: 10px;
+      padding: 2px 6px;
+      border-radius: 4px;
+      background: #0369a1;
+      color: #e0f2fe;
+    }
+    .grievance-highlight {
+      color: #ef4444 !important;
+      font-weight: 700 !important;
+    }
+  </style>
+</head>
+<body>
+  <div class="popup-container">
+    <header class="header">
+      <div class="header-left">
+        <span class="badge-tag" style="background: #991b1b; color: #fecaca;">🚨 GRIEVANCE FIRST</span>
+        <h2>Multi-Tab Web Crawler</h2>
+      </div>
+      <div class="status-indicator" id="wsStatus">
+        <span class="dot"></span>
+        <span id="wsStatusText">Connecting...</span>
+      </div>
+    </header>
+
+    <!-- Master Controls -->
+    <div class="card control-card">
+      <div class="toggle-row">
+        <div>
+          <span class="label-title">Parallel Crawler Engine</span>
+          <span class="label-sub" id="scrapeStateLabel">Stopped</span>
+        </div>
+        <button id="toggleScrapeBtn" class="btn btn-primary">⚡ Launch 3-Tab Crawler</button>
+      </div>
+
+      <div class="stats-grid" style="margin-top: 12px;">
+        <div class="stat-box">
+          <span class="stat-num" id="totalScrapedCount">0</span>
+          <span class="stat-name">Articles Ingested</span>
+        </div>
+        <div class="stat-box">
+          <span class="stat-num grievance-highlight" id="totalGrievanceCount">0</span>
+          <span class="stat-name">🚨 Public Grievances</span>
+        </div>
+        <div class="stat-box">
+          <span class="stat-num" id="activeTabsCount">0</span>
+          <span class="stat-name">Worker Tabs</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Multi-Website Portal Matrix -->
+    <div class="card test-card">
+      <div class="card-header" style="display: flex; align-items: center; justify-content: space-between;">
+        <h3>📰 Target Bihar News Portals</h3>
+        <button id="reloadExtBtn" class="btn btn-secondary btn-sm" title="Reload extension to apply latest code updates">🔄 Reload</button>
+      </div>
+      <div class="portal-list">
+        <div class="portal-item">
+          <span class="portal-name">🗞️ Dainik Bhaskar Bihar</span>
+          <span class="portal-badge" id="badgeBhaskar">Ready</span>
+        </div>
+        <div class="portal-item">
+          <span class="portal-name">📰 Live Hindustan Bihar</span>
+          <span class="portal-badge" id="badgeHindustan">Ready</span>
+        </div>
+        <div class="portal-item">
+          <span class="portal-name">📑 Prabhat Khabar Bihar</span>
+          <span class="portal-badge" id="badgePrabhat">Ready</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Extension Logs -->
+    <div class="card logs-card">
+      <div class="logs-header">
+        <span>Crawler Live Events</span>
+        <span class="logs-clear" id="clearLogsBtn">Clear</span>
+      </div>
+      <div class="logs-console" id="logsConsole">
+        <div class="log-line info">Ready. Click "⚡ Launch 3-Tab Crawler" to crawl Bhaskar, Hindustan & Prabhat concurrently.</div>
+      </div>
+    </div>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

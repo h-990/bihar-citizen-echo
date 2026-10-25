@@ -1,0 +1,48 @@
+{
+  "manifest_version": 3,
+  "name": "DeepSeek AI Web Automator",
+  "version": "1.0.0",
+  "description": "Injected JS runtime for chat.deepseek.com to automate low-latency Bihar news & grievance classification.",
+  "permissions": [
+    "storage",
+    "tabs",
+    "scripting",
+    "activeTab",
+    "alarms"
+  ],
+  "host_permissions": [
+    "https://chat.deepseek.com/*",
+    "*://*.deepseek.com/*",
+    "*://deepseek.com/*",
+    "http://localhost:8000/*",
+    "ws://localhost:8000/*",
+    "*://*/*"
+  ],
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://chat.deepseek.com/*"
+      ],
+      "js": ["content_script.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "DeepSeek AI Web Automator",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  }
+}

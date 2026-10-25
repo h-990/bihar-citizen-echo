@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>DeepSeek AI Automator</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="popup-container">
+    <header class="header">
+      <div class="header-left">
+        <span class="badge-tag">AI AUTOMATOR</span>
+        <h2>DeepSeek Web Runtime</h2>
+      </div>
+      <div class="status-indicator" id="wsStatus">
+        <span class="dot"></span>
+        <span id="wsStatusText">Connecting...</span>
+      </div>
+    </header>
+
+    <!-- DeepSeek Tab Status Banner -->
+    <div class="card tab-card" id="tabStatusCard">
+      <div class="tab-status-row">
+        <div class="tab-indicator" id="tabIndicator">
+          <span class="dot-tab"></span>
+          <span id="tabStatusLabel">Detecting DeepSeek Tab...</span>
+        </div>
+        <button id="openDeepSeekBtn" class="btn btn-secondary btn-sm">Open DeepSeek</button>
+      </div>
+    </div>
+
+    <!-- Processing Settings -->
+    <div class="card control-card">
+      <div class="setting-row">
+        <div class="label-group">
+          <span class="label-title">Throttle Delay</span>
+          <span class="label-sub">Wait between queue items</span>
+        </div>
+        <span id="throttleValue" class="highlight-val">4000 ms</span>
+      </div>
+      <input type="range" id="throttleSlider" min="1500" max="10000" step="500" value="4000">
+
+      <div class="setting-toggle-row">
+        <div>
+          <span class="label-title">Fast Mode (Bypass DeepThink)</span>
+          <span class="label-sub">Reduces generation latency to 1-2s</span>
+        </div>
+        <label class="switch">
+          <input type="checkbox" id="disableDeepThinkToggle" checked>
+          <span class="slider-toggle"></span>
+        </label>
+      </div>
+
+      <div class="stats-row">
+        <div class="stat-item">
+          <span class="num" id="totalProcessedCount">0</span>
+          <span class="lbl">Processed Items</span>
+        </div>
+        <div class="stat-item">
+          <span class="num" id="aiStatusState">IDLE</span>
+          <span class="lbl">Runtime State</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Standalone Test Box -->
+    <div class="card test-card">
+      <div class="card-header">
+        <h3>🧪 Standalone Prompt Injection Test</h3>
+        <button id="loadSamplePromptBtn" class="btn-link">Load Bihar Sample</button>
+      </div>
+      <textarea id="testPromptInput" placeholder="Enter prompt to test injection into active DeepSeek tab..."></textarea>
+      <div class="test-action-row">
+        <button id="runTestPromptBtn" class="btn btn-primary btn-sm">Send to DeepSeek Tab</button>
+        <span id="testTimerLabel" class="timer-label"></span>
+      </div>
+      <div id="testOutputContainer" class="test-output hidden">
+        <span class="output-title">DeepSeek Output:</span>
+        <pre id="testOutputPre"></pre>
+      </div>
+    </div>
+
+    <!-- Logs -->
+    <div class="card logs-card">
+      <div class="logs-header">
+        <span>DeepSeek Runtime Logs</span>
+        <span class="logs-clear" id="clearLogsBtn">Clear</span>
+      </div>
+      <div class="logs-console" id="logsConsole">
+        <div class="log-line info">Waiting for events...</div>
+      </div>
+    </div>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

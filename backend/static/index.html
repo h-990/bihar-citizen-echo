@@ -1,0 +1,733 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Bihar Citizen Echo - Local News & Grievance Analysis</title>
+  <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
+  <link rel="alternate icon" type="image/png" href="/static/favicon.png">
+  <link rel="stylesheet" href="/static/css/canvas.css?v=20261025_07">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+</head>
+<body>
+
+  <!-- ================= TOP NAVIGATION BAR ================= -->
+  <header class="top-navbar">
+    <div class="brand-section">
+      <div class="brand-logo">B</div>
+      <div class="brand-titles">
+        <h1>BIHAR CITIZEN ECHO</h1>
+        <span class="brand-subtitle">Grievance Scraping & LLM Automator</span>
+      </div>
+    </div>
+
+    <!-- Dynamic Extension Indicators (Discovered only when loaded/connected in Chrome) -->
+    <div class="extension-status-bar" id="dynamicExtensionBar">
+      <div class="status-badge" id="badgeServer">
+        <span class="dot"></span>
+        <span>Backend: <strong id="valServerStatus">Connecting</strong></span>
+      </div>
+      <span id="noExtHint" style="font-size: 11px; color: #64748b; font-family: var(--font-mono); padding: 0 4px;">
+        (Waiting for Chrome extensions...)
+      </span>
+    </div>
+
+    <!-- Master Actions -->
+    <div class="nav-actions">
+      <button id="masterPipelineToggleBtn" class="btn btn-primary">
+        <span id="pipelineIcon">⏸</span>
+        <span id="pipelineText">Pause Pipeline</span>
+      </button>
+      <button id="triggerSampleFeedBtn" class="btn btn-outline" title="Inject real Bihar civic news items for instant test">
+        <span>⚡ Ingest Bihar Feed</span>
+      </button>
+      <button id="openDbDrawerBtn" class="btn btn-outline">
+        <span>📂 Master DB</span>
+      </button>
+      <button id="resetDbBtn" class="btn btn-danger btn-sm" title="Reset all databases">
+        <span>Reset DBs</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- ================= SCROLLABLE / PANNABLE CANVAS ================= -->
+  <main class="canvas-wrapper" id="canvasWrapper">
+    <div class="canvas-floating-controls">
+      <div class="floating-filter-group" title="Filters which news cards are visible on the canvas dashboard. Does NOT alter backend graph routing.">
+        <span style="font-size: 11px; color: #94a3b8; font-weight: 600; margin-right: 4px;">🔍 View Filter:</span>
+        <select id="districtFilterSelect" class="filter-select">
+          <option value="ALL">📍 All Bihar Districts</option>
+          <option value="Patna">Patna (पटना)</option>
+          <option value="Muzaffarpur">Muzaffarpur (मुजफ्फरपुर)</option>
+          <option value="Gaya">Gaya (गया)</option>
+          <option value="Bhagalpur">Bhagalpur (भागलपुर)</option>
+          <option value="Darbhanga">Darbhanga (दरभंगा)</option>
+          <option value="Purnia">Purnia (पूर्णिया)</option>
+          <option value="Begusarai">Begusarai (बेगूसराय)</option>
+          <option value="Samastipur">Samastipur (समस्तीपुर)</option>
+        </select>
+
+        <select id="grievanceFilterSelect" class="filter-select">
+          <option value="ALL">View: All Cards</option>
+          <option value="GRIEVANCE_ONLY">🔴 Public Grievances Only</option>
+          <option value="NON_POLITICAL">🛡️ Non-Political Only</option>
+        </select>
+      </div>
+
+      <button id="addNodeBtn" class="btn btn-primary btn-sm">
+        <span>➕ Add Node</span>
+      </button>
+
+      <div class="zoom-control-group">
+        <button id="zoomOutBtn" class="zoom-btn" title="Zoom Out (Ctrl+Wheel)">➖</button>
+        <span id="zoomPercent" class="zoom-label">100%</span>
+        <button id="zoomInBtn" class="zoom-btn" title="Zoom In (Ctrl+Wheel)">➕</button>
+        <button id="resetZoomBtn" class="zoom-btn" title="Reset Zoom">1:1</button>
+      </div>
+
+      <button id="resetCanvasViewBtn" class="btn btn-outline btn-sm" title="Center View">
+        <span>🎯 Center</span>
+      </button>
+    </div>
+
+    <!-- Infinite Content Board -->
+    <div class="canvas-content" id="canvasContent">
+      <!-- Dynamic SVG Flow Layer for All Edges -->
+      <svg class="flow-svg-layer" id="flowSvgLayer">
+        <defs>
+          <linearGradient id="flowGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" stop-color="#38bdf8" />
+            <stop offset="100%" stop-color="#818cf8" />
+          </linearGradient>
+        </defs>
+        <g id="svgEdgesGroup"></g>
+        <path id="tempWirePath" class="temp-wire-path" d="" style="display: none;" />
+      </svg>
+
+      <!-- ================= NODE 1: BIHAR NEWS SCRAPER ================= -->
+      <div class="pipeline-node" id="nodeScraper" data-node="nodeScraper" style="left: 60px; top: 40px;">
+        <!-- Input Port -->
+        <div class="node-port port-input" data-node="nodeScraper" data-port="in" title="Connect Feed Source / Inflow"></div>
+        <div class="node-header" id="nodeScraperHeader">
+          <div class="node-title-group">
+            <span class="node-icon">🕷️</span>
+            <div>
+              <span class="node-title">Bihar Regional Web Scraper</span>
+              <span class="node-type-tag">SOURCE / INGESTION</span>
+            </div>
+          </div>
+          <div class="node-header-actions">
+            <span class="node-status-badge" id="scraperNodeStatusBadge">Idle</span>
+            <button class="node-close-btn delete-node-btn" data-node="nodeScraper" title="Delete Node from Pipeline">✕</button>
+          </div>
+        </div>
+
+        <div class="node-cards-container">
+          <!-- Card A: Inbound Queue / Raw News Stream -->
+          <div class="node-card">
+            <div class="card-top">
+              <h3>Scraped News Queue</h3>
+              <span class="count-pill" id="rawQueueCount">0 items</span>
+            </div>
+            <div class="card-body">
+              <div class="feed-stream-list" id="rawFeedStreamList">
+                <div class="stream-card empty-state">
+                  <p style="color: #64748b; font-size: 11px; text-align: center; padding: 20px;">
+                    No raw items in queue. Click "Ingest Bihar Feed" or launch the Bihar Scraper Chrome extension.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Card B: Scraper Settings & Raw DB -->
+          <div class="node-card">
+            <div class="card-top">
+              <h3>Scraper Settings & DB</h3>
+              <span class="count-pill">CONFIG</span>
+            </div>
+            <div class="card-body">
+              <div class="setting-item">
+                <div class="setting-label">
+                  <span>Scrape Throttle Delay:</span>
+                  <span id="scraperDelayLabel" class="setting-val">2500 ms</span>
+                </div>
+                <input type="range" id="scraperDelaySlider" min="500" max="8000" step="500" value="2500">
+              </div>
+
+              <div class="setting-item">
+                <div class="setting-label">
+                  <span>Active Regional Feeds:</span>
+                </div>
+                <div class="checkbox-group">
+                  <label class="checkbox-label"><input type="checkbox" id="feedBhaskar" checked> Dainik Bhaskar Bihar</label>
+                  <label class="checkbox-label"><input type="checkbox" id="feedPrabhat" checked> Prabhat Khabar Bihar</label>
+                  <label class="checkbox-label"><input type="checkbox" id="feedHindustan" checked> Live Hindustan Bihar</label>
+                  <label class="checkbox-label"><input type="checkbox" id="feedJagran" checked> Jagran Bihar / RSS</label>
+                </div>
+              </div>
+
+              <div style="margin-top: 8px;">
+                <button id="scrapeActiveTabBtn" class="btn btn-primary btn-sm" style="width: 100%; display: flex; align-items: center; justify-content: center; gap: 6px;" title="Launches Chrome tab and automatically visits and extracts new Bihar articles continuously">
+                  <span>🚀 Launch Live Bihar Crawler</span>
+                </button>
+              </div>
+
+              <div class="btn-group-row" style="margin-top: 8px;">
+                <button id="viewRawDbBtn" class="btn btn-outline btn-sm">📊 View Raw DB</button>
+                <button id="exportRawJsonBtn" class="btn btn-outline btn-sm">💾 Export JSON</button>
+                <button id="exportRawCsvBtn" class="btn btn-outline btn-sm">📄 Export CSV</button>
+              </div>
+
+              <div style="border-top: 1px solid var(--border-subtle); padding-top: 8px;">
+                <label class="btn btn-outline btn-sm" style="display: block; text-align: center;">
+                  📥 Import Raw DB
+                  <input type="file" id="importRawDbFile" accept=".json" style="display: none;">
+                </label>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Output Port -->
+        <div class="node-port port-output" id="scraperPortOut" title="Raw News Outflow"></div>
+      </div>
+
+      <!-- ================= NODE 2: DEEPSEEK AI AUTOMATOR ================= -->
+      <div class="pipeline-node" id="nodeDeepseek" style="left: 920px; top: 40px;">
+        <!-- Input Port -->
+        <div class="node-port port-input" id="deepseekPortIn" title="Raw Inbound Inflow"></div>
+
+        <div class="node-header" id="nodeDeepseekHeader">
+          <div class="node-title-group">
+            <span class="node-icon">🧠</span>
+            <div>
+              <span class="node-title">DeepSeek AI Web Automator</span>
+              <span class="node-type-tag">ANALYSIS / INTELLIGENCE</span>
+            </div>
+          </div>
+          <div class="node-header-actions">
+            <span class="node-status-badge" id="deepseekNodeStatusBadge">Waiting</span>
+            <button class="node-close-btn delete-node-btn" data-node="nodeDeepseek" title="Delete Node from Pipeline">✕</button>
+          </div>
+        </div>
+
+        <div class="node-cards-container">
+          <!-- Card A: Automator Controls & Processed DB -->
+          <div class="node-card">
+            <div class="card-top">
+              <h3>AI Engine Settings</h3>
+              <span class="count-pill">LOW-LATENCY</span>
+            </div>
+            <div class="card-body">
+              <div class="setting-item">
+                <div class="setting-label">
+                  <span>Dispatch Throttle:</span>
+                  <span id="aiDelayLabel" class="setting-val">4000 ms</span>
+                </div>
+                <input type="range" id="aiDelaySlider" min="1500" max="10000" step="500" value="4000">
+              </div>
+
+              <div class="setting-item">
+                <div class="setting-label">
+                  <span>Fast Mode (DeepThink Bypass):</span>
+                </div>
+                <label class="checkbox-label" style="color: #6ee7b7;">
+                  <input type="checkbox" id="bypassDeepThinkCheckbox" checked>
+                  <span>Active (Forces 1-2s response speed)</span>
+                </label>
+              </div>
+
+              <div class="setting-item" style="margin-top: 6px;">
+                <label class="checkbox-label" style="color: #38bdf8; font-weight: 600;">
+                  <input type="checkbox" id="deepseekWebSearchCheckbox">
+                  <span>🌐 DeepSeek WebSearch (Fact & Truth Verification)</span>
+                </label>
+              </div>
+
+              <div class="setting-item">
+                <div class="setting-label">
+                  <span>Extraction Schema:</span>
+                </div>
+                <div style="font-family: var(--font-mono); font-size: 10px; color: #94a3b8; background: #070a12; padding: 6px; border-radius: 4px; border: 1px solid var(--border-subtle);">
+                  is_grievance, grievance_type, urgency(1-5), logical_flaw, district, locality, authority
+                </div>
+              </div>
+
+              <div class="btn-group-row" style="margin-top: 6px;">
+                <button id="viewProcessedDbBtn" class="btn btn-outline btn-sm">📊 Processed DB</button>
+                <button id="exportProcJsonBtn" class="btn btn-outline btn-sm">💾 Export JSON</button>
+                <button id="exportProcCsvBtn" class="btn btn-outline btn-sm">📄 Export CSV</button>
+              </div>
+
+              <div style="border-top: 1px solid var(--border-subtle); padding-top: 8px;">
+                <label class="btn btn-outline btn-sm" style="display: block; text-align: center;">
+                  📥 Import Processed DB
+                  <input type="file" id="importProcDbFile" accept=".json" style="display: none;">
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <!-- Card B: Processed Intelligence Feed -->
+          <div class="node-card">
+            <div class="card-top">
+              <h3>Civic Intelligence Feed</h3>
+              <span class="count-pill" id="processedCountPill">0 analyzed</span>
+            </div>
+            <div class="card-body">
+              <div class="feed-stream-list" id="processedFeedStreamList">
+                <div class="stream-card empty-state">
+                  <p style="color: #64748b; font-size: 11px; text-align: center; padding: 20px;">
+                    No processed records yet. Raw items will be processed when DeepSeek automator is connected.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Output Port for Future Swappable Nodes -->
+        <div class="node-port port-output" id="deepseekPortOut" data-node="nodeDeepseek" data-port="out" title="Analyzed Intelligence Outflow"></div>
+      </div>
+
+      <!-- ================= NODE 3: MASTER OUTPUT & TERMINAL ================= -->
+      <div class="pipeline-node" id="nodeTerminal" data-node="nodeTerminal" style="left: 1720px; top: 40px;">
+        <div class="node-port port-input" data-node="nodeTerminal" data-port="in" title="Inflow Port"></div>
+        <div class="node-header">
+          <div class="node-title-group">
+            <span class="node-icon">📢</span>
+            <div>
+              <span class="node-title">Master Output & Archive Dispatch</span>
+              <span class="node-type-tag" style="background: rgba(16, 185, 129, 0.2); color: #34d399; border-color: rgba(16, 185, 129, 0.4);">TERMINAL_DB</span>
+            </div>
+          </div>
+          <div class="node-header-actions">
+            <span class="node-status-badge active">Online</span>
+            <button class="node-close-btn delete-node-btn" data-node="nodeTerminal" title="Delete Node from Pipeline">✕</button>
+          </div>
+        </div>
+
+        <div class="node-cards-container">
+          <div class="node-card" style="width: 280px;">
+            <div class="card-top">
+              <h3>Persistence & Feed</h3>
+              <span class="count-pill">SQLite DB</span>
+            </div>
+            <div class="card-body">
+              <p style="font-size: 11px; color: #94a3b8; line-height: 1.4;">
+                Consolidates all upstream facets (Urgency, Locality/Area, Fact-Check, Demands) into permanent storage.
+              </p>
+              <div style="margin-top: 8px; background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.3); padding: 6px; border-radius: 4px; font-size: 10px; color: #34d399; font-family: var(--font-mono);">
+                Target: processed_news (DB Ready)
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- ================= FIXED COLLAPSIBLE RIGHT PANEL: MASTER PROCESSED OUTPUT ================= -->
+  <aside class="master-output-panel collapsed" id="masterOutputPanel">
+    <button class="panel-toggle-tab" id="masterPanelToggleBtn" title="Toggle Master Processed Output Panel">
+      <span class="toggle-icon">❮</span>
+      <span class="toggle-text">📊 Final Output (<span id="panelOutputCount">0</span>)</span>
+    </button>
+    <div class="panel-inner">
+      <div class="panel-header">
+        <div class="panel-title-group">
+          <h2>MASTER INTELLIGENCE OUTPUT</h2>
+          <span class="panel-sub">Real-Time Deep Locality & Grievance Stream</span>
+        </div>
+        <div class="panel-header-actions">
+          <button id="refreshPanelBtn" class="btn-icon" title="Refresh Output Feed">🔄</button>
+          <button id="closePanelBtn" class="btn-icon" title="Collapse Panel">✕</button>
+        </div>
+      </div>
+
+      <!-- Quick Search & Filter Chips -->
+      <div class="panel-filters">
+        <input type="text" id="panelSearchInput" class="panel-search-bar" placeholder="🔍 Search locality, area, authority, or problem...">
+        <div class="panel-filter-chips">
+          <button class="chip active" data-filter="ALL">All (<span id="chipAllCount">0</span>)</button>
+          <button class="chip" data-filter="GRIEVANCE">🚨 Grievances (<span id="chipGrievanceCount">0</span>)</button>
+          <button class="chip" data-filter="CRITICAL">🔥 High Urgency (4+) (<span id="chipCriticalCount">0</span>)</button>
+        </div>
+      </div>
+
+      <!-- Live Stream List -->
+      <div class="panel-stream" id="panelStreamList">
+        <!-- Live Processed Cards -->
+      </div>
+
+      <!-- Footer with quick DB exports -->
+      <div class="panel-footer">
+        <button id="panelExportJsonBtn" class="btn btn-outline btn-sm">💾 Export JSON</button>
+        <button id="panelExportCsvBtn" class="btn btn-outline btn-sm">📄 Export CSV</button>
+        <button id="panelOpenModalDbBtn" class="btn btn-primary btn-sm">📂 Full DB Table</button>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Floating Button to Restore Terminal when Hidden -->
+  <button id="showTerminalFloatingBtn" class="floating-terminal-btn" style="display: none;" title="Open In-App Terminal">
+    📟 Terminal Logs
+  </button>
+
+  <!-- ================= BOTTOM DOCKED TERMINAL / LOGS CONSOLE ================= -->
+  <footer class="docked-terminal" id="dockedTerminal">
+    <!-- Smooth Drag Resize Handle -->
+    <div class="terminal-resize-bar" id="terminalResizeBar" title="Drag vertically to resize terminal dock">
+      <div class="resize-handle-pill"></div>
+    </div>
+
+    <div class="terminal-split-wrapper">
+      <!-- LEFT TERMINAL CONSOLE -->
+      <div class="terminal-left-pane">
+        <div class="terminal-header">
+          <div class="terminal-tabs">
+            <button class="term-tab active" data-stream="ALL">🌐 All Streams</button>
+            <button class="term-tab" data-stream="SYSTEM">⚙️ Backend Server</button>
+            <button class="term-tab" data-stream="SCRAPER">🕷️ Scraper Extension</button>
+            <button class="term-tab" data-stream="DEEPSEEK">🧠 DeepSeek Automator</button>
+            <button class="term-tab" data-stream="PIPELINE">⚡ Graph Pipeline</button>
+          </div>
+
+          <div class="terminal-controls">
+            <button id="clearTerminalLogsBtn" class="icon-btn" title="Clear logs">🧹 Clear</button>
+            <button id="copyTerminalLogsBtn" class="icon-btn" title="Copy logs">📋 Copy</button>
+            <button id="toggleTerminalSizeBtn" class="icon-btn" title="Toggle Size">🔼 Expand</button>
+            <button id="hideTerminalBtn" class="icon-btn" title="Hide Terminal completely to maximize canvas space">✕ Minimize</button>
+          </div>
+        </div>
+
+        <div class="terminal-body">
+          <div class="terminal-logs-viewport" id="terminalLogsViewport">
+            <!-- Live log entries will stream here -->
+          </div>
+
+          <!-- PRIORITY CUSTOM SEND MESSAGE FEATURE -->
+          <div class="custom-prompt-dock">
+            <div class="intercept-badge" title="Pauses automated queue, sends your prompt to DeepSeek, gets answer, then resumes">
+              <span>⚡ Priority Intercept</span>
+            </div>
+            <input 
+              type="text" 
+              id="customPromptInput" 
+              class="custom-prompt-input" 
+              placeholder="Pause queue & send prompt directly to DeepSeek... (e.g. 'What are the top hospital complaints in Muzaffarpur?')"
+            >
+            <button id="sendCustomPromptBtn" class="btn btn-primary btn-sm">
+              <span>Send to DeepSeek</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- RIGHT FAR DOCK: SQUARE HUD BIHAR OUTLINE MAP -->
+      <div class="terminal-square-dock" id="terminalSquareDock" title="Bihar Civic Geo-Surveillance Radar">
+        <!-- HUD Corner Brackets -->
+        <div class="hud-corner top-left"></div>
+        <div class="hud-corner top-right"></div>
+        <div class="hud-corner bottom-left"></div>
+        <div class="hud-corner bottom-right"></div>
+
+        <!-- Square Dock Header -->
+        <div class="square-dock-header">
+          <div class="hud-title">
+            <span class="hud-dot"></span>
+            <span class="hud-text">BIHAR GEO-SCAN // 25.09° N, 85.31° E</span>
+          </div>
+          <div class="hud-badge">
+            <span class="hud-radar-beacon"></span>
+            <span>ACTIVE</span>
+          </div>
+        </div>
+
+        <!-- Bihar Radar Map Container -->
+        <div class="bihar-radar-container">
+          <!-- Cyber Scanning Laser Beam -->
+          <div class="bihar-scan-beam"></div>
+
+          <!-- Circular Radar Sweep Line -->
+          <div class="bihar-radar-sweep"></div>
+
+          <!-- SVG Vector Outline Map of Bihar with Glowing Styling -->
+          <svg class="bihar-map-svg" viewBox="0 0 420 360" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <!-- Neon Cyan Glow Filters -->
+              <filter id="cyanGlow" x="-20%" y="-20%" width="140%" height="140%">
+                <feGaussianBlur stdDeviation="3.5" result="blur" />
+                <feMerge>
+                  <feMergeNode in="blur" />
+                  <feMergeNode in="blur" />
+                  <feMergeNode in="SourceGraphic" />
+                </feMerge>
+              </filter>
+              <linearGradient id="biharFillGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stop-color="#06b6d4" stop-opacity="0.14" />
+                <stop offset="50%" stop-color="#3b82f6" stop-opacity="0.08" />
+                <stop offset="100%" stop-color="#0891b2" stop-opacity="0.18" />
+              </linearGradient>
+              <linearGradient id="gangaGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%" stop-color="#38bdf8" stop-opacity="0.3" />
+                <stop offset="50%" stop-color="#06b6d4" stop-opacity="0.8" />
+                <stop offset="100%" stop-color="#38bdf8" stop-opacity="0.4" />
+              </linearGradient>
+            </defs>
+
+            <!-- Background Radar Rings & Azimuth Crosshairs -->
+            <g class="radar-crosshairs">
+              <circle cx="210" cy="180" r="160" class="radar-ring r3" />
+              <circle cx="210" cy="180" r="110" class="radar-ring r2" />
+              <circle cx="210" cy="180" r="60" class="radar-ring r1" />
+              <line x1="210" y1="20" x2="210" y2="340" class="crosshair-axis" />
+              <line x1="50" y1="180" x2="370" y2="180" class="crosshair-axis" />
+            </g>
+
+            <!-- Accurate Bihar Boundary Path with Neon Glowing Outline -->
+            <path 
+              class="bihar-boundary-glow"
+              d="M 62,42 C 75,44 88,48 102,46 C 118,44 132,55 146,64 C 168,72 192,76 218,80 C 248,82 280,83 312,86 C 334,92 355,88 375,92 C 385,98 388,112 384,126 C 380,140 368,158 366,174 C 364,192 376,210 372,228 C 368,242 356,254 344,268 C 330,282 308,296 284,292 C 262,298 238,308 214,312 C 188,316 162,314 136,310 C 112,306 88,298 68,284 C 52,272 44,254 48,236 C 54,214 68,194 72,172 C 76,148 68,126 64,104 C 56,82 52,60 62,42 Z"
+              fill="url(#biharFillGrad)"
+              stroke="#06b6d4"
+              stroke-width="2.4"
+              filter="url(#cyanGlow)"
+            />
+
+            <!-- Subtle Internal District Boundary Triangulation Grid -->
+            <path 
+              class="bihar-grid-lines"
+              d="M 146,64 L 188,214 L 214,312 M 218,80 L 188,214 L 344,268 M 312,86 L 275,190 L 372,228 M 102,46 L 72,172 L 68,284 M 188,214 L 275,190"
+              stroke="rgba(6, 182, 212, 0.22)"
+              stroke-width="1"
+              stroke-dasharray="3 3"
+              fill="none"
+            />
+
+            <!-- River Ganga Traversing Bihar (West to East) -->
+            <path 
+              class="bihar-ganga-river"
+              d="M 64,204 C 105,202 145,212 188,214 C 235,216 278,206 318,218 C 342,224 362,222 372,228"
+              stroke="url(#gangaGrad)"
+              stroke-width="2.2"
+              stroke-dasharray="4 2"
+              fill="none"
+            />
+
+            <!-- Key District Nodal Hubs with Pulsing Cyan/Emerald Markers -->
+            <!-- Patna (Capital) -->
+            <g class="district-node patna" transform="translate(188, 214)" data-dist="Patna (State Capital)">
+              <circle r="7" class="node-pulse-ring" />
+              <circle r="3.5" class="node-core capital" />
+              <text x="8" y="4" class="node-label">PATNA</text>
+            </g>
+
+            <!-- Muzaffarpur -->
+            <g class="district-node" transform="translate(185, 140)" data-dist="Muzaffarpur (North Hub)">
+              <circle r="5" class="node-pulse-ring" />
+              <circle r="2.8" class="node-core" />
+              <text x="7" y="3" class="node-label">MUZAFFARPUR</text>
+            </g>
+
+            <!-- Gaya -->
+            <g class="district-node" transform="translate(200, 280)" data-dist="Gaya (South Region)">
+              <circle r="5" class="node-pulse-ring" />
+              <circle r="2.8" class="node-core" />
+              <text x="7" y="3" class="node-label">GAYA</text>
+            </g>
+
+            <!-- Bhagalpur -->
+            <g class="district-node" transform="translate(332, 230)" data-dist="Bhagalpur (East Sector)">
+              <circle r="5" class="node-pulse-ring" />
+              <circle r="2.8" class="node-core" />
+              <text x="7" y="3" class="node-label">BHAGALPUR</text>
+            </g>
+
+            <!-- Darbhanga -->
+            <g class="district-node" transform="translate(245, 130)" data-dist="Darbhanga (Mithila Hub)">
+              <circle r="4" class="node-pulse-ring" />
+              <circle r="2.5" class="node-core" />
+              <text x="6" y="3" class="node-label">DARBHANGA</text>
+            </g>
+
+            <!-- Purnia -->
+            <g class="district-node" transform="translate(345, 155)" data-dist="Purnia (Seemanchal)">
+              <circle r="4" class="node-pulse-ring" />
+              <circle r="2.5" class="node-core" />
+              <text x="6" y="3" class="node-label">PURNIA</text>
+            </g>
+
+            <!-- Bettiah (W Champaran) -->
+            <g class="district-node" transform="translate(95, 78)" data-dist="West Champaran (Terai)">
+              <circle r="4" class="node-pulse-ring" />
+              <circle r="2.5" class="node-core" />
+              <text x="6" y="3" class="node-label">CHAMPARAN</text>
+            </g>
+
+            <!-- Rohtas (Sasaram) -->
+            <g class="district-node" transform="translate(100, 265)" data-dist="Rohtas (South-West)">
+              <circle r="4" class="node-pulse-ring" />
+              <circle r="2.5" class="node-core" />
+              <text x="6" y="3" class="node-label">ROHTAS</text>
+            </g>
+          </svg>
+
+          <!-- Interactive Tooltip Overlay on hover -->
+          <div class="bihar-node-tooltip" id="biharNodeTooltip"></div>
+        </div>
+
+        <!-- Square Dock Footer Telemetry -->
+        <div class="square-dock-footer">
+          <span class="telemetry-item">RADAR: <span class="cyan-val">360° SWEEP</span></span>
+          <span class="telemetry-item">ZONES: <span class="cyan-val">38 DISTS ACTIVE</span></span>
+        </div>
+      </div>
+    </div>
+  </footer>
+
+
+  <!-- ================= NEWS DETAIL MODAL (POPUP) ================= -->
+  <div class="modal-overlay" id="newsDetailModal">
+    <div class="modal-container">
+      <div class="modal-header">
+        <h2 id="modalNewsTitle">News & Grievance Intelligence Detail</h2>
+        <button class="modal-close-btn" id="closeModalBtn">&times;</button>
+      </div>
+      <div class="modal-body">
+        <!-- Media Gallery -->
+        <div class="modal-media-gallery" id="modalMediaGallery">
+          <img id="modalMainImg" src="" alt="News Media">
+          <div class="modal-id-watermark" id="modalIdWatermark">ID: --</div>
+        </div>
+
+        <!-- 2 Column Intelligence Grid -->
+        <div class="modal-grid-2col">
+          <div class="info-panel">
+            <h3>📍 Bihar Geo & Civic Classification</h3>
+            <div class="detail-row">
+              <span class="key">District:</span>
+              <span class="val" id="modalDistrict">--</span>
+            </div>
+            <div class="detail-row">
+              <span class="key">Block / Tehsil:</span>
+              <span class="val" id="modalBlock">--</span>
+            </div>
+            <div class="detail-row">
+              <span class="key">Locality / Ward:</span>
+              <span class="val" id="modalLocality">--</span>
+            </div>
+            <div class="detail-row">
+              <span class="key">Grievance Type:</span>
+              <span class="val" id="modalGrievanceType">--</span>
+            </div>
+            <div class="detail-row">
+              <span class="key">Is Political:</span>
+              <span class="val" id="modalIsPolitical">--</span>
+            </div>
+            <div class="detail-row">
+              <span class="key">Responsible Body:</span>
+              <span class="val" id="modalAuthority">--</span>
+            </div>
+          </div>
+
+          <div class="info-panel">
+            <h3>⚡ Urgency & Credibility Ratings</h3>
+            <div class="detail-row">
+              <span class="key">Urgency Level:</span>
+              <span class="val" id="modalUrgency">--</span>
+            </div>
+            <div class="detail-row">
+              <span class="key">Logical Flaw Score:</span>
+              <span class="val" id="modalFlawScore">--</span>
+            </div>
+            <div class="detail-row">
+              <span class="key">Public Sentiment:</span>
+              <span class="val" id="modalSentiment">--</span>
+            </div>
+            <div class="detail-row">
+              <span class="key">Affected Population:</span>
+              <span class="val" id="modalAffectedPop">--</span>
+            </div>
+            <div class="detail-row">
+              <span class="key">Original Source:</span>
+              <span class="val"><a id="modalSourceLink" href="#" target="_blank" style="color: #38bdf8;">--</a></span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Exotic Facets & Dynamic Node Attributes -->
+        <div class="info-panel" id="modalExoticPanel" style="display: none;">
+          <h3>🏷️ Exotic Facets & Dynamic Node Attributes</h3>
+          <div id="modalExoticContainer" style="display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px;"></div>
+        </div>
+
+        <!-- Story Summary -->
+        <div class="info-panel">
+          <h3>Factual Story Summary</h3>
+          <p id="modalStorySummary" style="line-height: 1.5; color: #cbd5e1;"></p>
+        </div>
+
+        <!-- Key Citizen Demands -->
+        <div class="info-panel">
+          <h3>Key Issues & Citizen Demands</h3>
+          <ul id="modalDemandsList" style="padding-left: 20px; color: #93c5fd;"></ul>
+        </div>
+
+        <!-- Raw DeepSeek AI JSON Block -->
+        <div class="info-panel">
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <h3>Raw AI Intelligence Output (JSON)</h3>
+            <button id="copyJsonBtn" class="btn btn-outline btn-sm">Copy JSON</button>
+          </div>
+          <pre class="raw-json-block" id="modalRawJson"></pre>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= ADD NODE PALETTE MODAL ================= -->
+  <div class="node-palette-backdrop" id="nodePaletteBackdrop">
+    <div class="node-palette-modal">
+      <div class="palette-modal-header">
+        <h2><span>🧩</span> Modular Node Palette & Swappable Extensions</h2>
+        <button id="closePaletteBtn" class="node-close-btn" style="width: 26px; height: 26px; font-size: 14px;">✕</button>
+      </div>
+      <div class="palette-modal-body">
+        <p style="font-size: 12px; color: #94a3b8; margin-bottom: 16px;">
+          Add modular extensions and processing nodes to your pipeline canvas. Connect wires in any order or combination.
+        </p>
+        <div class="palette-grid" id="paletteGrid">
+          <!-- Populated by CanvasEngine -->
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= MASTER DB DRAWER ================= -->
+  <aside class="drawer-overlay" id="dbDrawer">
+    <div class="drawer-header">
+      <div style="display: flex; gap: 8px;">
+        <button id="drawerTabProc" class="btn btn-primary btn-sm">Processed News DB</button>
+        <button id="drawerTabRaw" class="btn btn-outline btn-sm">Raw News DB</button>
+      </div>
+      <button class="modal-close-btn" id="closeDrawerBtn">&times;</button>
+    </div>
+    <div class="drawer-content" id="drawerContent">
+      <table class="db-table" id="drawerDbTable">
+        <thead id="drawerTableHead"></thead>
+        <tbody id="drawerTableBody"></tbody>
+      </table>
+    </div>
+  </aside>
+
+  <!-- Scripts with Cache Busting -->
+  <script src="/static/js/canvas_nodes.js?v=20261025_07"></script>
+  <script src="/static/js/terminal.js?v=20261025_07"></script>
+  <script src="/static/js/modal.js?v=20261025_07"></script>
+  <script src="/static/js/app.js?v=20261025_07"></script>
+</body>
+</html>

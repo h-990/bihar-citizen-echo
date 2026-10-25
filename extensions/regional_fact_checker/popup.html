@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Regional Fact-Checker & Authenticity Ext</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="popup-container">
+    <!-- Header -->
+    <header class="header">
+      <div class="brand">
+        <span class="icon">🔍</span>
+        <div>
+          <h2>Regional Fact-Checker</h2>
+          <span class="subtitle">Rumor Detection & Authenticity Verifier</span>
+        </div>
+      </div>
+      <div class="status-indicator">
+        <span class="status-dot" id="wsStatus"></span>
+        <span class="status-text" id="wsStatusText">Connecting...</span>
+      </div>
+    </header>
+
+    <!-- Metrics Bar -->
+    <div class="metrics-grid">
+      <div class="metric-card">
+        <span class="metric-label">Fact-Checked</span>
+        <span class="metric-value" id="totalCheckedCount">0</span>
+      </div>
+      <div class="metric-card">
+        <span class="metric-label">Pipeline Node</span>
+        <span class="metric-value text-accent">nodeFactcheck</span>
+      </div>
+      <div class="metric-card">
+        <span class="metric-label">Mode</span>
+        <span class="metric-value text-emerald">Active</span>
+      </div>
+    </div>
+
+    <!-- Controls -->
+    <section class="controls-card">
+      <div class="control-row">
+        <label for="flagClickbaitToggle">Flag Political Sensationalism & Hyperbole</label>
+        <input type="checkbox" id="flagClickbaitToggle" checked>
+      </div>
+      <div class="control-row" style="margin-top: 8px;">
+        <label for="strictOfficialToggle">Require Official Bihar Admin Attribution</label>
+        <input type="checkbox" id="strictOfficialToggle">
+      </div>
+    </section>
+
+    <!-- Standalone Test Box -->
+    <section class="test-card">
+      <div class="test-header">
+        <span>Instant Rumor & Authenticity Tester</span>
+        <button id="runFactcheckTestBtn" class="btn btn-primary btn-sm">⚡ Check Sample</button>
+      </div>
+      <div id="testOutputBox" class="test-output hidden">
+        <div class="verdict-banner">
+          <div class="score-pill" id="credibilityPill">Score: 45</div>
+          <span class="badge" id="verdictBadge">UNVERIFIED_RUMOR</span>
+        </div>
+        <p class="notes-text" id="verificationNotes">Lacks official administrative confirmation.</p>
+      </div>
+    </section>
+
+    <!-- Console Logs -->
+    <section class="logs-card">
+      <div class="logs-header">
+        <span>Live Fact-Checking Logs</span>
+        <button id="clearLogsBtn" class="btn-link">Clear</button>
+      </div>
+      <div class="logs-console" id="logsConsole">
+        <div class="log-line info">Connecting to backend hub...</div>
+      </div>
+    </section>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>
