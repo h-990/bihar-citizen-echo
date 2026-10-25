@@ -50,13 +50,15 @@ let visitedUrls = new Set();
 let seenTitles = new Set();
 let totalScraped = 0;
 let totalGrievancesScraped = 0;
+let portalPrefs = { bhaskar: true, hindustan: true, prabhat: true };
+let scrapedItemsCache = [];
 
 // Map of tabId -> WorkerState { portalId, portalName, queue: string[], seedIdx: number }
 const workerTabs = new Map();
 
 async function initStorage() {
   try {
-    const data = await chrome.storage.local.get(["visited_urls", "seen_titles", "crawler_stats"]);
+    const data = await chrome.storage.local.get(["visited_urls", "seen_titles", "crawler_stats", "scraper_portal_prefs", "scraped_items_cache"]);
     if (data.visited_urls && Array.isArray(data.visited_urls)) {
       visitedUrls = new Set(data.visited_urls);
     }
@@ -66,6 +68,12 @@ async function initStorage() {
     if (data.crawler_stats) {
       totalScraped = data.crawler_stats.totalScraped || 0;
       totalGrievancesScraped = data.crawler_stats.totalGrievances || 0;
+    }
+    if (data.scraper_portal_prefs) {
+      portalPrefs = data.scraper_portal_prefs;
+    }
+    if (data.scraped_items_cache && Array.isArray(data.scraped_items_cache)) {
+      scrapedItemsCache = data.scraped_items_cache;
     }
   } catch (e) {}
 }
@@ -165,7 +173,8 @@ function connectWebSocket() {
 
 async function startMultiTabCrawler() {
   isCrawlerActive = true;
-  logLocal("SUCCESS", `Launching Multi-Tab Grievance Crawler across ${TARGET_PORTALS.length} Bihar news portals...`);
+  const activePortals = TARGET_PORTALS.filter(p => portalPrefs[p.id] !== false);
+  logLocal("SUCCESS", `Launching Multi-Tab Grievance Crawler across ${activePortals.length} enabled Bihar news portals...`);
 
   if (ws && ws.readyState === WebSocket.OPEN) {
     ws.send(JSON.stringify({ type: "SCRAPER_STATUS", status: "active" }));
@@ -173,9 +182,9 @@ async function startMultiTabCrawler() {
 
   const allOpenTabs = await chrome.tabs.query({});
 
-  // Launch a dedicated worker tab for each Bihar news portal
-  for (let i = 0; i < TARGET_PORTALS.length; i++) {
-    const portal = TARGET_PORTALS[i];
+  // Launch a dedicated worker tab for each enabled Bihar news portal
+  for (let i = 0; i < activePortals.length; i++) {
+    const portal = activePortals[i];
 
     // Check if a tab for this portal is already running
     let existingTab = allOpenTabs.find(t => t.url && t.url.includes(portal.id));
@@ -297,6 +306,13 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         if (article.is_grievance) totalGrievancesScraped++;
         saveStorage();
 
+        // Maintain local items cache for export
+        scrapedItemsCache.unshift(article);
+        if (scrapedItemsCache.length > 300) scrapedItemsCache.pop();
+        try {
+          chrome.storage.local.set({ scraped_items_cache: scrapedItemsCache });
+        } catch (e) {}
+
         const badge = article.is_grievance ? `🚨 [${article.grievance_category}]` : "📰";
         logLocal("SUCCESS", `${badge} [${article.district_hint}] "${article.title.substring(0, 42)}" (${article.source_name})`);
 
@@ -344,6 +360,14 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   } else if (request.type === "LAUNCH_MULTI_TAB") {
     startMultiTabCrawler();
     sendResponse({ started: true });
+    return true;
+
+  } else if (request.type === "UPDATE_PORTAL_PREFS") {
+    if (request.prefs) {
+      portalPrefs = { ...portalPrefs, ...request.prefs };
+      logLocal("INFO", `Portal preferences updated: ${JSON.stringify(portalPrefs)}`);
+    }
+    sendResponse({ updated: true });
     return true;
   }
 });
