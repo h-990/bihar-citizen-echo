@@ -15,7 +15,11 @@ async def init_db():
     """Initialize database tables with WAL mode for concurrent reading/writing."""
     async with aiosqlite.connect(DB_FILE) as db:
         await db.execute("PRAGMA journal_mode=WAL;")
-        await db.execute("PRAGMA busy_timeout=5000;")
+        await db.execute("PRAGMA synchronous=NORMAL;")
+        await db.execute("PRAGMA busy_timeout=10000;")
+        await db.execute("PRAGMA cache_size=-64000;")  # 64MB memory page cache
+        await db.execute("PRAGMA temp_store=MEMORY;")
+        await db.execute("PRAGMA mmap_size=268435456;")  # 256MB memory-mapped I/O
         
         # 1. Raw Scraped News Table
         await db.execute("""
@@ -66,6 +70,7 @@ async def init_db():
         await db.execute("CREATE INDEX IF NOT EXISTS idx_proc_district ON processed_news(district);")
         await db.execute("CREATE INDEX IF NOT EXISTS idx_proc_grievance ON processed_news(is_grievance);")
         await db.execute("CREATE INDEX IF NOT EXISTS idx_proc_urgency ON processed_news(urgency_level DESC);")
+        await db.execute("CREATE INDEX IF NOT EXISTS idx_proc_grievance_type ON processed_news(grievance_type);")
         await db.execute("CREATE INDEX IF NOT EXISTS idx_proc_processed_at ON processed_news(processed_at DESC);")
 
         # 3. System & Pipeline Logs

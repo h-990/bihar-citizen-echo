@@ -427,20 +427,27 @@
    * Verify whether the prompt was actually accepted (input cleared).
    * Retries clicking if input doesn't clear after 1 second.
    */
-  async function verifyMessageDispatched(inputElem, maxWaitMs = 3500) {
+  async function verifyMessageDispatched(inputElem, maxWaitMs = 4000) {
     const start = Date.now();
+    let retryAttempt = 0;
     while (Date.now() - start < maxWaitMs) {
       const val = (inputElem.value || inputElem.innerText || "").trim();
       if (val === "") {
         return true;
       }
-      if (Date.now() - start > 1200) {
+      if (Date.now() - start > 800 * (retryAttempt + 1)) {
+        retryAttempt++;
+        console.log(`[DeepSeek Automator] Adaptive retry attempt ${retryAttempt} to trigger message dispatch...`);
         const btn = findSendButton(inputElem);
         if (btn && !btn.hasAttribute("disabled") && btn.getAttribute("aria-disabled") !== "true") {
+          btn.dispatchEvent(new MouseEvent("mousedown", { bubbles: true, cancelable: true }));
+          btn.dispatchEvent(new MouseEvent("mouseup", { bubbles: true, cancelable: true }));
           btn.click();
+        } else {
+          dispatchEnterKey(inputElem);
         }
       }
-      await sleep(200);
+      await sleep(180);
     }
     return false;
   }

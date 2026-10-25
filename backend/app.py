@@ -25,6 +25,7 @@ from backend.database import (
 from backend.hub import hub
 from backend.pipeline import PipelineOrchestrator
 
+START_TIME = time.time()
 pipeline = PipelineOrchestrator(hub)
 
 @asynccontextmanager
@@ -37,6 +38,8 @@ async def lifespan(app: FastAPI):
     # Shutdown
     if pipeline._worker_task:
         pipeline._worker_task.cancel()
+    if pipeline._crawl_scheduler_task:
+        pipeline._crawl_scheduler_task.cancel()
 
 app = FastAPI(
     title="Bihar Citizen Echo - Grievance & Local News Orchestrator",
@@ -534,6 +537,41 @@ async def fetch_district_hotspots():
     """Retrieve aggregated grievance hotspot density across Bihar districts."""
     hotspots = await get_district_hotspot_summary()
     return {"status": "success", "total_districts": len(hotspots), "hotspots": hotspots}
+
+@app.get("/api/health")
+async def health_check():
+    """Liveness probe for orchestrator."""
+    return {"status": "ok", "timestamp": time.time(), "version": "1.1.0"}
+
+@app.get("/api/metrics")
+async def system_metrics():
+    """System observability telemetry metrics."""
+    raw_news = await get_all_raw_news(limit=1000)
+    proc_news = await get_all_processed_news(limit=1000)
+    grievances = [p for p in proc_news if p.get("is_grievance")]
+    
+    return {
+        "status": "online",
+        "version": "1.1.0",
+        "uptime_seconds": round(time.time() - START_TIME, 2),
+        "telemetry": {
+            "raw_ingested_count": len(raw_news),
+            "processed_count": len(proc_news),
+            "grievance_count": len(grievances),
+            "grievance_ratio": round(len(grievances) / max(1, len(proc_news)), 3)
+        },
+        "connected_extensions": {
+            "scraper_workers": len(hub.scraper_clients),
+            "deepseek_automators": len(hub.deepseek_clients),
+            "severity_analyzers": len(hub.severity_clients),
+            "ui_clients": len(hub.ui_clients)
+        },
+        "pipeline_state": {
+            "is_active": hub.is_pipeline_active,
+            "deepseek_status": hub.deepseek_status,
+            "scraper_status": hub.scraper_status
+        }
+    }
 
 @app.get("/api/nodes")
 async def fetch_pipeline_nodes():

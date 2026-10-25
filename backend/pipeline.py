@@ -36,6 +36,9 @@ class PipelineOrchestrator:
         self.enable_websearch: bool = False
         self.bypass_deepthink: bool = True
         self._worker_task: Optional[asyncio.Task] = None
+        self._crawl_scheduler_task: Optional[asyncio.Task] = None
+        self.crawl_interval_seconds: int = 180
+        self.crawl_jitter_seconds: int = 20
         self._deepseek_busy: bool = False
         self._deepseek_busy_since: float = 0.0
         self._last_dispatch_time: float = 0.0
@@ -45,7 +48,6 @@ class PipelineOrchestrator:
 
     def set_bypass_deepthink(self, enabled: bool):
         self.bypass_deepthink = bool(enabled)
-
 
     async def initialize(self):
         """Initialize default canvas nodes, edges, and background loop."""
@@ -86,6 +88,27 @@ class PipelineOrchestrator:
         # Start queue worker
         if self._worker_task is None or self._worker_task.done():
             self._worker_task = asyncio.create_task(self._process_queue_loop())
+
+        # Start periodic background crawl scheduler
+        if self._crawl_scheduler_task is None or self._crawl_scheduler_task.done():
+            self._crawl_scheduler_task = asyncio.create_task(self._periodic_crawl_loop())
+
+    async def _periodic_crawl_loop(self):
+        """Periodically trigger automated regional crawl checks with randomized jitter."""
+        import random
+        while True:
+            try:
+                jitter = random.uniform(-self.crawl_jitter_seconds, self.crawl_jitter_seconds)
+                sleep_duration = max(30.0, self.crawl_interval_seconds + jitter)
+                await asyncio.sleep(sleep_duration)
+
+                if not self.is_paused and self.hub and len(self.hub.scraper_clients) > 0:
+                    await self.hub.send_to_scraper_ext({"type": "TRIGGER_SCRAPE_NOW"})
+                    await self.hub.broadcast_log("SCHEDULER", "INFO", f"Periodic crawl sweep dispatched (Next in ~{int(sleep_duration)}s)")
+            except asyncio.CancelledError:
+                break
+            except Exception:
+                await asyncio.sleep(15.0)
 
     async def enqueue_raw_item(self, item: Dict[str, Any]):
         """Add newly scraped item into pipeline graph with deduplication."""
