@@ -19,16 +19,29 @@
 
 ---
 
+## 🖥️ Platform Interface Preview
+
+<p align="center">
+  <img src="assets/dashboard_preview.png" width="100%" alt="Bihar Citizen Echo Cybernetic Interface" />
+</p>
+
+<p align="center">
+  <i>Figure 1: Modular Pipeline Canvas with dynamic particle edge flows, DeepSeek AI classification, multi-stream log terminal, and Bihar Geo-Radar scanning HUD.</i>
+</p>
+
+---
+
 ## 📑 Table of Contents
-1. [Overview & Problem Statement](#-overview--problem-statement)
-2. [High-Level Architecture](#-high-level-architecture)
-3. [The 4 Chrome Extensions](#-the-4-chrome-extensions)
-4. [Interactive Node Canvas & Cyber HUD](#-interactive-node-canvas--cyber-hud)
-5. [Quick Start (One-Command Runner)](#-quick-start-one-command-runner)
-6. [Real-World Operating Workflow](#-real-world-operating-workflow)
-7. [Priority Intercept (Custom User Queries)](#-priority-intercept-custom-user-queries)
-8. [Database Schema & API Reference](#-database-schema--api-reference)
-9. [Proprietary License](#-proprietary-license)
+1. [Platform Interface Preview](#-platform-interface-preview)
+2. [Overview & Problem Statement](#-overview--problem-statement)
+3. [High-Level Architecture](#-high-level-architecture)
+4. [The 4 Chrome Extensions](#-the-4-chrome-extensions)
+5. [Interactive Node Canvas & Cyber HUD](#-interactive-node-canvas--cyber-hud)
+6. [Quick Start (One-Command Runner)](#-quick-start-one-command-runner)
+7. [Real-World Operating Workflow](#-real-world-operating-workflow)
+8. [Priority Intercept (Custom User Queries)](#-priority-intercept-custom-user-queries)
+9. [Database Schema & API Reference](#-database-schema--api-reference)
+10. [Proprietary License](#-proprietary-license)
 
 ---
 
