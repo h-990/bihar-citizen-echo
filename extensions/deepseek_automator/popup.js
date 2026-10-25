@@ -148,6 +148,13 @@ Schema:
       runTestPromptBtn.innerText = "Send to DeepSeek Tab";
       testOutputContainer.classList.remove("hidden");
       testOutputPre.innerText = msg.result_text || "No response text received.";
+    } else if (msg.type === "DEEPSEEK_ERROR") {
+      if (timerInterval) clearInterval(timerInterval);
+      testTimerLabel.innerText = "Error";
+      runTestPromptBtn.disabled = false;
+      runTestPromptBtn.innerText = "Send to DeepSeek Tab";
+      testOutputContainer.classList.remove("hidden");
+      testOutputPre.innerText = `Error: ${msg.error || "Execution failed in DeepSeek tab. Make sure chat.deepseek.com is loaded."}`;
     }
   });
 

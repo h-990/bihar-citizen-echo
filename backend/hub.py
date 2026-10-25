@@ -287,6 +287,8 @@ class ConnectionHub:
         elif client_type == "deepseek_ext":
             if msg_type == "DEEPSEEK_READY":
                 self.deepseek_status = "idle"
+                if self.pipeline_orchestrator:
+                    self.pipeline_orchestrator.on_deepseek_finished()
                 await self.broadcast_log("DEEPSEEK", "INFO", "DeepSeek tab confirmed ready for prompts.")
                 await self.broadcast_status()
 
@@ -338,6 +340,9 @@ class ConnectionHub:
                 err = msg.get("error", "DeepSeek tab execution failed.")
                 raw_id = msg.get("raw_id", "")
                 await self.broadcast_log("DEEPSEEK", "ERROR", f"DeepSeek error for item {raw_id[:16]}: {err}")
+                if self._pending_custom_future and not self._pending_custom_future.done():
+                    self._pending_custom_future.set_exception(Exception(err))
+                self.is_custom_intercept_active = False
                 if self.pipeline_orchestrator:
                     self.pipeline_orchestrator.on_deepseek_finished()
                 await self.broadcast_status()

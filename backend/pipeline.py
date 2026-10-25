@@ -106,6 +106,9 @@ class PipelineOrchestrator:
 
     def resume_pipeline(self):
         self.is_paused = False
+        if self.hub and self.hub.deepseek_status == "idle":
+            self._deepseek_busy = False
+            self._deepseek_busy_since = 0.0
 
     def set_ai_delay(self, delay_ms: int):
         self.ai_delay_ms = max(500, delay_ms)

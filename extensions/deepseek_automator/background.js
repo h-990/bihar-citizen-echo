@@ -108,6 +108,51 @@ chrome.runtime.onConnect.addListener((port) => {
   }
 });
 
+// Dynamic Content Script Injection for Pre-Existing or Restored Tabs
+async function ensureContentScriptInjected(tabId) {
+  if (!tabId) return false;
+  try {
+    // 1. Ping tab to check if content script is active
+    const pong = await new Promise((resolve) => {
+      chrome.tabs.sendMessage(tabId, { type: "PING" }, (res) => {
+        if (chrome.runtime.lastError || !res || res.status !== "pong") {
+          resolve(false);
+        } else {
+          resolve(true);
+        }
+      });
+    });
+
+    if (pong) return true;
+
+    // 2. Tab is open but content script is not running - inject programmatically
+    logLocal("INFO", `Dynamically injecting content script into DeepSeek tab ${tabId}...`);
+    await chrome.scripting.executeScript({
+      target: { tabId: tabId },
+      files: ["content_script.js"]
+    });
+
+    // Wait 200ms for script initialization
+    await new Promise(r => setTimeout(r, 200));
+
+    // 3. Re-verify ping
+    const recheck = await new Promise((resolve) => {
+      chrome.tabs.sendMessage(tabId, { type: "PING" }, (res) => {
+        if (chrome.runtime.lastError || !res || res.status !== "pong") {
+          resolve(false);
+        } else {
+          resolve(true);
+        }
+      });
+    });
+
+    return recheck;
+  } catch (err) {
+    logLocal("WARN", `Could not auto-inject content script into tab ${tabId}: ${err.message}`);
+    return false;
+  }
+}
+
 async function locateDeepSeekTab() {
   try {
     // 1. Search all tabs across all windows for any open DeepSeek tab
@@ -121,6 +166,8 @@ async function locateDeepSeekTab() {
     if (dsTab) {
       activeDeepSeekTabId = dsTab.id;
       await chrome.storage.local.set({ activeDeepSeekTabId: dsTab.id });
+      // Ensure content script is mounted in this tab
+      await ensureContentScriptInjected(dsTab.id);
       notifyPopup({ type: "TAB_STATUS", found: true, tabId: activeDeepSeekTabId });
       checkAndSendReady();
       return activeDeepSeekTabId;
@@ -133,6 +180,7 @@ async function locateDeepSeekTab() {
         const tab = await chrome.tabs.get(stored.activeDeepSeekTabId);
         if (tab && ((tab.url && tab.url.includes("deepseek")) || (tab.title && tab.title.toLowerCase().includes("deepseek")))) {
           activeDeepSeekTabId = tab.id;
+          await ensureContentScriptInjected(tab.id);
           notifyPopup({ type: "TAB_STATUS", found: true, tabId: activeDeepSeekTabId });
           checkAndSendReady();
           return activeDeepSeekTabId;
@@ -168,6 +216,28 @@ async function handleBackendTask(msg) {
     const tabId = await locateDeepSeekTab();
     if (!tabId) {
       logLocal("WARN", "DeepSeek tab not found. Waiting for user to open chat.deepseek.com...");
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({
+          type: "DEEPSEEK_ERROR",
+          raw_id: rawId,
+          error: "DeepSeek tab not found. Please open chat.deepseek.com in Chrome."
+        }));
+      }
+      isProcessing = false;
+      return;
+    }
+
+    const isReady = await ensureContentScriptInjected(tabId);
+    if (!isReady) {
+      logLocal("ERROR", `Content script not responding in DeepSeek tab ${tabId}.`);
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({
+          type: "DEEPSEEK_ERROR",
+          raw_id: rawId,
+          error: "DeepSeek tab is not responsive. Please refresh chat.deepseek.com."
+        }));
+      }
+      isProcessing = false;
       return;
     }
 
@@ -186,10 +256,16 @@ async function handleBackendTask(msg) {
       enable_websearch: Boolean(msg.enable_websearch),
       bypass_deepthink: msg.bypass_deepthink !== false
     }, (response) => {
-
       if (chrome.runtime.lastError) {
         logLocal("ERROR", `Failed communicating with tab: ${chrome.runtime.lastError.message}`);
         isProcessing = false;
+        if (ws && ws.readyState === WebSocket.OPEN) {
+          ws.send(JSON.stringify({
+            type: "DEEPSEEK_ERROR",
+            raw_id: rawId,
+            error: chrome.runtime.lastError.message
+          }));
+        }
         checkAndSendReady();
       }
     });
@@ -199,6 +275,28 @@ async function handleBackendTask(msg) {
     const tabId = await locateDeepSeekTab();
     if (!tabId) {
       logLocal("ERROR", "Cannot inject priority query: No DeepSeek tab open.");
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({
+          type: "DEEPSEEK_ERROR",
+          raw_id: "custom_user_query",
+          error: "No DeepSeek tab open. Please open chat.deepseek.com first."
+        }));
+      }
+      isProcessing = false;
+      return;
+    }
+
+    const isReady = await ensureContentScriptInjected(tabId);
+    if (!isReady) {
+      logLocal("ERROR", "Cannot inject priority query: Tab content script not responding.");
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({
+          type: "DEEPSEEK_ERROR",
+          raw_id: "custom_user_query",
+          error: "DeepSeek tab is not responsive. Please refresh chat.deepseek.com."
+        }));
+      }
+      isProcessing = false;
       return;
     }
 
@@ -213,6 +311,13 @@ async function handleBackendTask(msg) {
       if (chrome.runtime.lastError) {
         logLocal("ERROR", `Failed sending custom query: ${chrome.runtime.lastError.message}`);
         isProcessing = false;
+        if (ws && ws.readyState === WebSocket.OPEN) {
+          ws.send(JSON.stringify({
+            type: "DEEPSEEK_ERROR",
+            raw_id: "custom_user_query",
+            error: chrome.runtime.lastError.message
+          }));
+        }
       }
     });
   }
@@ -306,6 +411,14 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       chrome.storage.local.set({ deepseek_config: cfg });
     });
 
+    // Notify Popup so standalone test UI completes immediately
+    notifyPopup({
+      type: "PROMPT_COMPLETED",
+      raw_id: rawId,
+      result_text: resultText,
+      is_custom: isCustom
+    });
+
     if (isCustom) {
       if (ws && ws.readyState === WebSocket.OPEN) {
         ws.send(JSON.stringify({
@@ -331,6 +444,13 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     const rawId = request.raw_id;
     const errorMsg = request.error || "Execution error in DeepSeek tab";
     logLocal("ERROR", `DeepSeek execution failed for [${rawId}]: ${errorMsg}`);
+
+    // Notify Popup so test UI updates on error
+    notifyPopup({
+      type: "DEEPSEEK_ERROR",
+      raw_id: rawId,
+      error: errorMsg
+    });
 
     if (ws && ws.readyState === WebSocket.OPEN) {
       ws.send(JSON.stringify({
@@ -370,11 +490,18 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     return true;
 
   } else if (request.type === "TEST_PROMPT_MANUAL") {
-    locateDeepSeekTab().then((tabId) => {
+    locateDeepSeekTab().then(async (tabId) => {
       if (!tabId) {
         sendResponse({ error: "No DeepSeek tab open. Click 'Open DeepSeek' button." });
         return;
       }
+
+      const isReady = await ensureContentScriptInjected(tabId);
+      if (!isReady) {
+        sendResponse({ error: "DeepSeek tab not responsive. Please refresh chat.deepseek.com." });
+        return;
+      }
+
       isProcessing = true;
       chrome.tabs.sendMessage(tabId, {
         type: "EXECUTE_PROMPT",
@@ -382,7 +509,13 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         raw_id: "test_" + Date.now(),
         is_custom: true
       }, () => {
-        sendResponse({ initiated: true });
+        if (chrome.runtime.lastError) {
+          isProcessing = false;
+          notifyPopup({ type: "DEEPSEEK_ERROR", error: chrome.runtime.lastError.message });
+          sendResponse({ error: chrome.runtime.lastError.message });
+        } else {
+          sendResponse({ initiated: true });
+        }
       });
     });
     return true;

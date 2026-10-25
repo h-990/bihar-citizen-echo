@@ -10,6 +10,12 @@
  */
 
 (function () {
+  if (window.__DEEPSEEK_AUTOMATOR_INJECTED__) {
+    console.log("[DeepSeek Automator] Content script runtime already active in tab.");
+    return;
+  }
+  window.__DEEPSEEK_AUTOMATOR_INJECTED__ = true;
+
   console.log("%c[DeepSeek Automator] Injected runtime active.", "background: #1e293b; color: #38bdf8; font-weight: bold; padding: 4px;");
 
   // Keep background service worker alive and register tab
@@ -40,6 +46,11 @@
 
   // Listen for prompt execution commands from background service worker
   chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+    if (request.type === "PING") {
+      sendResponse({ status: "pong", version: "1.0.0", url: window.location.href });
+      return true;
+    }
+
     if (request.type === "EXECUTE_PROMPT") {
       executePromptSequence(
         request.prompt,
@@ -259,7 +270,7 @@
   }
 
   /**
-   * Dispatches Enter key event on input element
+   * Dispatches Enter key event on input element as secondary fallback
    */
   function dispatchEnterKey(inputElem) {
     inputElem.focus();
@@ -277,70 +288,120 @@
   }
 
   /**
-   * Clicks DeepSeek send button or dispatches Enter key
+   * Locates the active Send button in DeepSeek's DOM
    */
-  async function clickSendButton(inputElem) {
-    const isNonSendButton = (b) => {
+  function findSendButton(inputElem) {
+    const isNonSend = (b) => {
       const txt = (b.innerText || "").toLowerCase();
       const aria = (b.getAttribute("aria-label") || "").toLowerCase();
       const title = (b.title || "").toLowerCase();
-      const className = (b.className || "").toString().toLowerCase();
+      const cls = (b.className || "").toString().toLowerCase();
       return (
         txt.includes("search") || txt.includes("web") || txt.includes("联网") || txt.includes("deepthink") ||
         aria.includes("search") || aria.includes("web") || aria.includes("联网") || aria.includes("deepthink") ||
         aria.includes("attach") || aria.includes("upload") || aria.includes("file") || aria.includes("clear") ||
         title.includes("search") || title.includes("web") || title.includes("联网") || title.includes("deepthink") ||
-        className.includes("search")
+        cls.includes("search")
       );
     };
 
-    // 1. Look inside parent container first for send button
-    const container = inputElem.closest("form, div[class*='input'], div[class*='chat'], div[class*='box']") || document.body;
-    const candidates = Array.from(container.querySelectorAll("div[role='button'], button, .ds-icon-button"));
-
-    // Explicit send button match (via aria-label, title, or type)
-    let sendBtn = candidates.find(b => {
-      if (!isVisible(b) || isNonSendButton(b)) return false;
-      const aria = (b.getAttribute("aria-label") || "").toLowerCase();
-      const title = (b.title || "").toLowerCase();
-      const type = (b.getAttribute("type") || "").toLowerCase();
-      return aria.includes("send") || title.includes("send") || aria.includes("发送") || title.includes("发送") || type === "submit";
-    });
-
-    // Fallback: trailing action button in input container that is NOT an excluded button and has an SVG
-    if (!sendBtn) {
-      const filtered = candidates.filter(b => isVisible(b) && !isNonSendButton(b));
-      if (filtered.length > 0) {
-        const lastBtn = filtered[filtered.length - 1];
-        if (lastBtn.querySelector("svg")) {
-          sendBtn = lastBtn;
+    // 1. Ascend container hierarchy to find input toolbar
+    let container = inputElem.parentElement;
+    while (container && container !== document.body) {
+      const candidates = Array.from(container.querySelectorAll("button, div[role='button'], .ds-icon-button"));
+      
+      // Explicit send button match
+      for (const b of candidates) {
+        if (!isVisible(b) || isNonSend(b)) continue;
+        const aria = (b.getAttribute("aria-label") || "").toLowerCase();
+        const title = (b.title || "").toLowerCase();
+        const type = (b.getAttribute("type") || "").toLowerCase();
+        if (aria.includes("send") || title.includes("send") || aria.includes("发送") || title.includes("发送") || type === "submit") {
+          return b;
         }
       }
+
+      // Check trailing button with SVG
+      const validBtns = candidates.filter(b => isVisible(b) && !isNonSend(b));
+      if (validBtns.length > 0) {
+        const lastBtn = validBtns[validBtns.length - 1];
+        if (lastBtn.querySelector("svg")) {
+          return lastBtn;
+        }
+      }
+
+      container = container.parentElement;
     }
 
-    if (sendBtn) {
-      // Check if button has aria-disabled
-      const isDisabled = sendBtn.hasAttribute("disabled") || sendBtn.getAttribute("aria-disabled") === "true";
-      if (!isDisabled) {
-        sendBtn.click();
-        return true;
+    // 2. Global search for explicit send button
+    const globalBtns = Array.from(document.querySelectorAll("button, div[role='button']"));
+    for (const b of globalBtns) {
+      if (!isVisible(b) || isNonSend(b)) continue;
+      const aria = (b.getAttribute("aria-label") || "").toLowerCase();
+      const title = (b.title || "").toLowerCase();
+      if (aria.includes("send") || title.includes("send") || aria.includes("发送") || title.includes("发送")) {
+        return b;
       }
     }
 
-    // 2. Dispatch Enter key
-    dispatchEnterKey(inputElem);
-    return true;
+    return null;
   }
 
   /**
-   * Verify whether the prompt was actually accepted (input cleared)
+   * Clicks DeepSeek send button or dispatches Enter key.
+   * Polls up to 2 seconds for DeepSeek's React state to enable the Send button.
    */
-  async function verifyMessageDispatched(inputElem, maxWaitMs = 3000) {
+  async function clickSendButton(inputElem) {
+    const startTime = Date.now();
+    let clicked = false;
+
+    while (Date.now() - startTime < 2000) {
+      const sendBtn = findSendButton(inputElem);
+      if (sendBtn) {
+        const isDisabled = sendBtn.hasAttribute("disabled") ||
+                           sendBtn.getAttribute("aria-disabled") === "true" ||
+                           sendBtn.classList.contains("disabled");
+        if (!isDisabled) {
+          sendBtn.dispatchEvent(new MouseEvent("mousedown", { bubbles: true, cancelable: true }));
+          sendBtn.dispatchEvent(new MouseEvent("mouseup", { bubbles: true, cancelable: true }));
+          sendBtn.click();
+          clicked = true;
+          break;
+        }
+      }
+      await sleep(80);
+    }
+
+    if (!clicked) {
+      // Fallback: click whatever button was found or dispatch Enter key
+      const fallbackBtn = findSendButton(inputElem);
+      if (fallbackBtn) {
+        fallbackBtn.click();
+      } else {
+        dispatchEnterKey(inputElem);
+      }
+      clicked = true;
+    }
+
+    return clicked;
+  }
+
+  /**
+   * Verify whether the prompt was actually accepted (input cleared).
+   * Retries clicking if input doesn't clear after 1 second.
+   */
+  async function verifyMessageDispatched(inputElem, maxWaitMs = 3500) {
     const start = Date.now();
     while (Date.now() - start < maxWaitMs) {
       const val = (inputElem.value || inputElem.innerText || "").trim();
       if (val === "") {
         return true;
+      }
+      if (Date.now() - start > 1200) {
+        const btn = findSendButton(inputElem);
+        if (btn && !btn.hasAttribute("disabled") && btn.getAttribute("aria-disabled") !== "true") {
+          btn.click();
+        }
       }
       await sleep(200);
     }
