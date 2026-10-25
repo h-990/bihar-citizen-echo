@@ -1,4 +1,4 @@
-# 🇮🇳 Bihar Citizen Echo — Autonomous Civic Grievance & News Intelligence Platform
+# 🇮🇳 Bihar Citizen Echo (Team Quantum) — Autonomous Civic Intelligence Platform
 
 <p align="center">
   <img src="assets/logo.png" width="320" alt="Bihar Citizen Echo Cybernetic Intelligence Logo" style="border-radius: 28px; box-shadow: 0 16px 40px rgba(0,0,0,0.6);" />
@@ -9,12 +9,12 @@
 </p>
 
 <p align="center">
+  <img src="https://img.shields.io/badge/Team-Quantum-0284c7?style=for-the-badge&logo=shield" alt="Team Quantum" />
   <img src="https://img.shields.io/badge/Python-3.10%2B-blue?style=for-the-badge&logo=python" alt="Python 3.10+" />
   <img src="https://img.shields.io/badge/FastAPI-0.162.0-009688?style=for-the-badge&logo=fastapi" alt="FastAPI" />
   <img src="https://img.shields.io/badge/DeepSeek-V3%20Automated-7c3aed?style=for-the-badge&logo=openai" alt="DeepSeek" />
   <img src="https://img.shields.io/badge/Chrome_MV3-4_Extensions-4285F4?style=for-the-badge&logo=googlechrome" alt="Chrome MV3" />
   <img src="https://img.shields.io/badge/WebSockets-Realtime_Hub-f59e0b?style=for-the-badge" alt="WebSockets" />
-  <img src="https://img.shields.io/badge/License-Proprietary-red?style=for-the-badge" alt="Proprietary License" />
 </p>
 
 ---
