@@ -348,42 +348,79 @@
   }
 
   /**
-   * Clicks DeepSeek send button or dispatches Enter key.
-   * Polls up to 2 seconds for DeepSeek's React state to enable the Send button.
+   * Clicks DeepSeek send button as soon as React enables it.
+   * Uses a MutationObserver to listen directly for attribute changes (disabled, aria-disabled, class)
+   * on the Send button and input toolbar, firing at the exact microsecond React re-renders.
    */
   async function clickSendButton(inputElem) {
-    const startTime = Date.now();
-    let clicked = false;
+    return new Promise((resolve) => {
+      let isDone = false;
+      let observer = null;
+      let timeoutTimer = null;
 
-    while (Date.now() - startTime < 2000) {
-      const sendBtn = findSendButton(inputElem);
-      if (sendBtn) {
-        const isDisabled = sendBtn.hasAttribute("disabled") ||
-                           sendBtn.getAttribute("aria-disabled") === "true" ||
-                           sendBtn.classList.contains("disabled");
-        if (!isDisabled) {
-          sendBtn.dispatchEvent(new MouseEvent("mousedown", { bubbles: true, cancelable: true }));
-          sendBtn.dispatchEvent(new MouseEvent("mouseup", { bubbles: true, cancelable: true }));
-          sendBtn.click();
-          clicked = true;
-          break;
+      function isSendButtonEnabled(btn) {
+        if (!btn || !isVisible(btn)) return false;
+        const isDisabled = btn.hasAttribute("disabled") ||
+                           btn.getAttribute("aria-disabled") === "true" ||
+                           btn.classList.contains("disabled");
+        return !isDisabled;
+      }
+
+      function triggerClick(btn) {
+        if (isDone) return;
+        isDone = true;
+        if (observer) observer.disconnect();
+        if (timeoutTimer) clearTimeout(timeoutTimer);
+
+        try {
+          btn.dispatchEvent(new MouseEvent("mousedown", { bubbles: true, cancelable: true }));
+          btn.dispatchEvent(new MouseEvent("mouseup", { bubbles: true, cancelable: true }));
+          btn.click();
+        } catch (e) {
+          btn.click();
         }
+        resolve(true);
       }
-      await sleep(80);
-    }
 
-    if (!clicked) {
-      // Fallback: click whatever button was found or dispatch Enter key
-      const fallbackBtn = findSendButton(inputElem);
-      if (fallbackBtn) {
-        fallbackBtn.click();
-      } else {
-        dispatchEnterKey(inputElem);
+      // 1. Immediate check: If button is already enabled, click immediately (0ms delay)
+      const immediateBtn = findSendButton(inputElem);
+      if (immediateBtn && isSendButtonEnabled(immediateBtn)) {
+        triggerClick(immediateBtn);
+        return;
       }
-      clicked = true;
-    }
 
-    return clicked;
+      // 2. MutationObserver: Watch the input toolbar for React DOM mutations
+      const targetContainer = inputElem.closest("form, div[class*='input'], div[class*='chat'], div[class*='box']") || inputElem.parentElement || document.body;
+
+      observer = new MutationObserver(() => {
+        const btn = findSendButton(inputElem);
+        if (btn && isSendButtonEnabled(btn)) {
+          triggerClick(btn);
+        }
+      });
+
+      observer.observe(targetContainer, {
+        attributes: true,
+        attributeFilter: ["disabled", "aria-disabled", "class"],
+        childList: true,
+        subtree: true
+      });
+
+      // 3. Safety timeout fallback (2000ms) in case React doesn't fire an observable mutation
+      timeoutTimer = setTimeout(() => {
+        if (isDone) return;
+        isDone = true;
+        if (observer) observer.disconnect();
+
+        const fallbackBtn = findSendButton(inputElem);
+        if (fallbackBtn) {
+          fallbackBtn.click();
+        } else {
+          dispatchEnterKey(inputElem);
+        }
+        resolve(true);
+      }, 2000);
+    });
   }
 
   /**
