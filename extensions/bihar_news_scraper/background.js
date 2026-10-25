@@ -402,7 +402,21 @@ function logLocal(level, message) {
   }
 }
 
+function updateActionBadge() {
+  try {
+    if (chrome.action && chrome.action.setBadgeText) {
+      if (isCrawlerActive) {
+        chrome.action.setBadgeText({ text: workerTabs.size > 0 ? `${workerTabs.size}T` : "ON" });
+        chrome.action.setBadgeBackgroundColor({ color: "#0284c7" });
+      } else {
+        chrome.action.setBadgeText({ text: "" });
+      }
+    }
+  } catch (e) {}
+}
+
 function notifyPopup(payload = null) {
+  updateActionBadge();
   const workersSummary = Array.from(workerTabs.entries()).map(([tabId, w]) => ({
     tabId,
     portalId: w.portalId,
