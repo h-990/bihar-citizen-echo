@@ -19,6 +19,83 @@ document.addEventListener("DOMContentLoaded", () => {
   const logsConsole = document.getElementById("logsConsole");
   const clearLogsBtn = document.getElementById("clearLogsBtn");
 
+  const chkBhaskar = document.getElementById("chkBhaskar");
+  const chkHindustan = document.getElementById("chkHindustan");
+  const chkPrabhat = document.getElementById("chkPrabhat");
+  const exportCsvBtn = document.getElementById("exportCsvBtn");
+  const exportJsonBtn = document.getElementById("exportJsonBtn");
+
+  // Load saved portal toggles
+  chrome.storage.local.get("scraper_portal_prefs", (data) => {
+    const prefs = data.scraper_portal_prefs || { bhaskar: true, hindustan: true, prabhat: true };
+    if (chkBhaskar) chkBhaskar.checked = prefs.bhaskar !== false;
+    if (chkHindustan) chkHindustan.checked = prefs.hindustan !== false;
+    if (chkPrabhat) chkPrabhat.checked = prefs.prabhat !== false;
+  });
+
+  function savePortalPrefs() {
+    const prefs = {
+      bhaskar: chkBhaskar ? chkBhaskar.checked : true,
+      hindustan: chkHindustan ? chkHindustan.checked : true,
+      prabhat: chkPrabhat ? chkPrabhat.checked : true
+    };
+    chrome.storage.local.set({ scraper_portal_prefs: prefs });
+    chrome.runtime.sendMessage({ type: "UPDATE_PORTAL_PREFS", prefs });
+  }
+
+  if (chkBhaskar) chkBhaskar.addEventListener("change", savePortalPrefs);
+  if (chkHindustan) chkHindustan.addEventListener("change", savePortalPrefs);
+  if (chkPrabhat) chkPrabhat.addEventListener("change", savePortalPrefs);
+
+  // Export Data (JSON & CSV)
+  if (exportJsonBtn) {
+    exportJsonBtn.addEventListener("click", () => {
+      chrome.storage.local.get("scraped_items_cache", (data) => {
+        const items = data.scraped_items_cache || [];
+        if (items.length === 0) {
+          alert("No scraped news items available to export yet. Launch crawler first!");
+          return;
+        }
+        const blob = new Blob([JSON.stringify(items, null, 2)], { type: "application/json" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `bihar_news_feed_${Date.now()}.json`;
+        a.click();
+        URL.revokeObjectURL(url);
+      });
+    });
+  }
+
+  if (exportCsvBtn) {
+    exportCsvBtn.addEventListener("click", () => {
+      chrome.storage.local.get("scraped_items_cache", (data) => {
+        const items = data.scraped_items_cache || [];
+        if (items.length === 0) {
+          alert("No scraped news items available to export yet. Launch crawler first!");
+          return;
+        }
+        const headers = ["ID", "Title", "Source", "District", "URL", "ScrapedAt"];
+        const rows = items.map(it => [
+          `"${it.id || ''}"`,
+          `"${(it.title || '').replace(/"/g, '""')}"`,
+          `"${it.source_name || ''}"`,
+          `"${it.district_hint || 'Bihar'}"`,
+          `"${it.source_url || ''}"`,
+          `"${new Date((it.scraped_at || Date.now()) * 1000).toISOString()}"`
+        ]);
+        const csvContent = [headers.join(","), ...rows.map(r => r.join(","))].join("\n");
+        const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `bihar_news_feed_${Date.now()}.csv`;
+        a.click();
+        URL.revokeObjectURL(url);
+      });
+    });
+  }
+
   function refreshState() {
     chrome.runtime.sendMessage({ type: "GET_STATE" }, (res) => {
       if (chrome.runtime.lastError || !res) {
