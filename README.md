@@ -1,7 +1,7 @@
 # 🇮🇳 Bihar Citizen Echo — Autonomous Civic Grievance & News Intelligence Platform
 
 <p align="center">
-  <img src="backend/static/favicon-128.png" width="100" alt="Bihar Citizen Echo Logo" />
+  <img src="assets/logo.png" width="320" alt="Bihar Citizen Echo Cybernetic Intelligence Logo" style="border-radius: 28px; box-shadow: 0 16px 40px rgba(0,0,0,0.6);" />
 </p>
 
 <p align="center">
