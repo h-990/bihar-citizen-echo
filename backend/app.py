@@ -38,6 +38,8 @@ async def lifespan(app: FastAPI):
     # Shutdown
     if pipeline._worker_task:
         pipeline._worker_task.cancel()
+    if pipeline._crawl_scheduler_task:
+        pipeline._crawl_scheduler_task.cancel()
 
 app = FastAPI(
     title="Bihar Citizen Echo - Grievance & Local News Orchestrator",
