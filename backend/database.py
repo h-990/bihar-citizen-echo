@@ -491,3 +491,25 @@ async def reset_all_databases():
     await init_db()
     await seed_default_edges_if_empty()
 
+async def get_district_hotspot_summary():
+    """Aggregate grievances by district for geo-radar density mapping."""
+    async with aiosqlite.connect(DB_FILE) as db:
+        db.row_factory = aiosqlite.Row
+        query = """
+            SELECT 
+                district,
+                COUNT(*) as total_grievances,
+                ROUND(AVG(urgency_level), 2) as avg_urgency,
+                SUM(CASE WHEN urgency_level >= 4 THEN 1 ELSE 0 END) as critical_count,
+                MAX(urgency_level) as max_urgency,
+                COUNT(DISTINCT grievance_type) as unique_types
+            FROM processed_news
+            WHERE is_grievance = 1
+            GROUP BY district
+            ORDER BY total_grievances DESC, avg_urgency DESC
+        """
+        async with db.execute(query) as cursor:
+            rows = await cursor.fetchall()
+            return [dict(r) for r in rows]
+
+
